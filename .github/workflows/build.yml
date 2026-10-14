@@ -12,6 +12,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew checkKotlinStyle :fishsync-core:test :fishsync-client:test :fishsync-android:assembleDebug :sample-app:assembleDebug :sample-app:assembleRelease :sample-app:lintDebug
 
@@ -25,6 +28,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - name: Enable KVM
         run: |
