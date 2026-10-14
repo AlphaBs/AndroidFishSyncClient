@@ -1,0 +1,45 @@
+# Gradle and build outputs
+.gradle/
+.kotlin/
+**/build/
+out/
+*.class
+
+# Local SDKs, emulators, tooling and machine-specific configuration
+local.properties
+.local/
+.android/
+.cxx/
+.externalNativeBuild/
+captures/
+
+# IDE files
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+secrets.properties
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Generated packages, logs and OS files
+*.apk
+*.aab
+*.aar
+*.log
+*.hprof
+.DS_Store
+Thumbs.db
+
+# Gradle Wrapper JAR must be tracked when added
+!gradle/wrapper/gradle-wrapper.jar
