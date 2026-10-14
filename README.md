@@ -73,6 +73,7 @@ val result = client.pull(bucketId, storage, expectedPlan = plan)
 
 - [구현 계획](docs/implementation-plan.md)
 - [구현 현황·검증·남은 작업](docs/implementation-status.md)
+- [core 객체 구조와 확장](docs/core-architecture.md)
 - [원본 비교 계약](fixtures/comparison-contract.json)
 
 ## 라이선스

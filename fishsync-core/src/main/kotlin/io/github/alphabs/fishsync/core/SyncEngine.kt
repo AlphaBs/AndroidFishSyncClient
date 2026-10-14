@@ -7,19 +7,19 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
-import java.io.InputStream
-import java.io.OutputStream
 import java.util.Locale
 
 class SyncEngine(
     val caseInsensitive: Boolean = true,
+    private val comparerFactory: FileComparerFactory = DefaultFileComparerFactory(),
+    private val filePairSyncer: SyncFilePairSyncer = DefaultSyncFilePairSyncer(),
 ) {
     private val events = MutableSharedFlow<SyncProgress>(extraBufferCapacity = 64)
     val progress = events.asSharedFlow()
 
     suspend fun compare(
         sources: List<SourceFile>,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
     ): SyncPlan =
@@ -29,7 +29,7 @@ class SyncEngine(
 
     suspend fun pull(
         sources: List<SourceFile>,
-        storage: SyncStorage,
+        storage: WritableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
         expectedPlan: SyncPlan? = null,
@@ -62,33 +62,9 @@ class SyncEngine(
         return result
     }
 
-    private suspend fun areEqual(
-        source: SourceFile,
-        target: FileEntry,
-        storage: SyncStorage,
-        comparison: Comparison,
-    ): Boolean {
-        val compareSize = comparison != Comparison.Checksum && source.size != null
-        if (compareSize && source.size != target.size) {
-            return false
-        }
-
-        if (comparison == Comparison.Size) {
-            return true
-        }
-
-        val checksum = source.checksum ?: return true
-        val targetHash =
-            storage
-                .read(target.path)
-                .use { hash(it, checksum.algorithm) }
-
-        return targetHash.equals(checksum.hex, true)
-    }
-
     private suspend fun compareInternal(
         sources: List<SourceFile>,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext,
     ): SyncPlan {
@@ -113,10 +89,14 @@ class SyncEngine(
                 added.add(source.path)
             } else if (rule.action == SyncAction.InstallOnly) {
                 continue
-            } else if (areEqual(source, target, storage, rule.comparison)) {
-                identical.add(source.path)
             } else {
-                updated.add(source.path)
+                val pair = SyncFilePair(source, target)
+                val comparer = comparerFactory.create(rule.comparison)
+                if (comparer.areEqual(pair, storage)) {
+                    identical.add(source.path)
+                } else {
+                    updated.add(source.path)
+                }
             }
         }
 
@@ -172,7 +152,7 @@ class SyncEngine(
     private suspend fun createFingerprint(
         sources: List<SourceFile>,
         targets: Collection<FileEntry>,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
     ): String {
         val signature = StringBuilder()
 
@@ -205,7 +185,7 @@ class SyncEngine(
     private suspend fun applyPlan(
         plan: SyncPlan,
         sources: List<SourceFile>,
-        storage: SyncStorage,
+        storage: WritableSyncStorage,
     ): SyncResult {
         val original =
             storage.list().associate { entry ->
@@ -227,7 +207,18 @@ class SyncEngine(
                 val source = sources.first { it.path == path }
                 val targetPath = targets[pathKey(path)]?.path ?: path
 
-                applySource(source, targetPath, storage, original[targetPath], applied)
+                val target = targets[pathKey(path)] ?: FileEntry(targetPath, null)
+                val pair = SyncFilePair(source, target)
+                filePairSyncer.sync(
+                    pair = pair,
+                    storage = storage,
+                    expectedTargetChecksum = original[targetPath],
+                    onProgress = { events.tryEmit(it) },
+                    onApplied = { copied ->
+                        applied.add(path)
+                        events.tryEmit(SyncProgress(path, "applied", copied, copied))
+                    },
+                )
             }
 
             // 전송 실패가 있으면 이 삭제 단계에는 도달하지 않는다.
@@ -244,93 +235,6 @@ class SyncEngine(
             throw cancel
         } catch (failure: Exception) {
             throw SyncFailure(applied.toList(), deleted.toList(), failure)
-        }
-    }
-
-    private suspend fun applySource(
-        source: SourceFile,
-        targetPath: String,
-        storage: SyncStorage,
-        originalHash: String?,
-        applied: MutableList<String>,
-    ) {
-        storage.prepare(targetPath).use { pending ->
-            val copied =
-                source.open().use { input ->
-                    pending
-                        .output()
-                        .use { output -> copySource(source, input, output) }
-                }
-
-            verifyTransfer(source, pending, copied)
-            checkUnchanged(storage, targetPath, originalHash)
-            currentCoroutineContext().ensureActive()
-
-            pending.commit()
-            applied.add(source.path)
-            events.tryEmit(SyncProgress(source.path, "applied", copied, copied))
-        }
-    }
-
-    private suspend fun copySource(
-        source: SourceFile,
-        input: InputStream,
-        output: OutputStream,
-    ): Long {
-        val buffer = ByteArray(65536)
-        var copied = 0L
-
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val bytesRead = input.read(buffer)
-            if (bytesRead < 0) {
-                break
-            }
-
-            output.write(buffer, 0, bytesRead)
-            copied += bytesRead
-            events.tryEmit(SyncProgress(source.path, "transfer", copied, source.size))
-        }
-
-        return copied
-    }
-
-    private suspend fun verifyTransfer(
-        source: SourceFile,
-        pending: PendingWrite,
-        copied: Long,
-    ) {
-        if (source.size != null && source.size != copied) {
-            throw IntegrityException(source.path)
-        }
-
-        val expected = source.checksum ?: return
-        val actual =
-            pending
-                .input()
-                .use { hash(it, expected.algorithm) }
-        if (!actual.equals(expected.hex, true)) {
-            throw IntegrityException(source.path)
-        }
-    }
-
-    private suspend fun checkUnchanged(
-        storage: SyncStorage,
-        path: String,
-        original: String?,
-    ) {
-        val current =
-            storage
-                .list()
-                .firstOrNull { it.path == path }
-        val digest =
-            current?.let {
-                storage
-                    .read(path)
-                    .use { hash(it) }
-            }
-        if (digest != original) {
-            throw ChangedFileException(path)
         }
     }
 }

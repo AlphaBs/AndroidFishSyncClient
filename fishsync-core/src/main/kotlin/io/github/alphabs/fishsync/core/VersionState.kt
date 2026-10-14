@@ -8,8 +8,8 @@ import java.nio.file.StandardCopyOption
 
 class VersionState(
     private val file: File,
-) {
-    fun current(): String? =
+) : VersionManager {
+    override fun current(): String? =
         try {
             file
                 .inputStream()
@@ -18,9 +18,9 @@ class VersionState(
             null
         }
 
-    fun isNew(version: String?): Boolean = current() != version?.trim()
+    override fun isNew(version: String?): Boolean = current() != version?.trim()
 
-    fun update(version: String) {
+    override fun update(version: String) {
         val bytes =
             version
                 .trim()

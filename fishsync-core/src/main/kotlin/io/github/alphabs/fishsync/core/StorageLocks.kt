@@ -9,7 +9,7 @@ object StorageLocks {
     private val locks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun <T> run(
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         block: suspend () -> T,
     ): T {
         val lock = locks.getOrPut(storage.identity) { Mutex() }
