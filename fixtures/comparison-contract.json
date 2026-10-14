@@ -1,0 +1,370 @@
+[
+  {
+    "name": "full",
+    "sources": [
+      {
+        "path": "same",
+        "text": "123",
+        "checksum": true
+      },
+      {
+        "path": "change",
+        "text": "new",
+        "checksum": true
+      },
+      {
+        "path": "add",
+        "text": "add",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "same",
+        "text": "123"
+      },
+      {
+        "path": "change",
+        "text": "old"
+      },
+      {
+        "path": "delete",
+        "text": "delete"
+      }
+    ],
+    "rules": [
+      {
+        "action": "FullSync",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [
+        "add"
+      ],
+      "updated": [
+        "change"
+      ],
+      "deleted": [
+        "delete"
+      ],
+      "identical": [
+        "same"
+      ]
+    }
+  },
+  {
+    "name": "update-only",
+    "sources": [
+      {
+        "path": "change",
+        "text": "new",
+        "checksum": true
+      },
+      {
+        "path": "add",
+        "text": "add",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "change",
+        "text": "old"
+      },
+      {
+        "path": "keep",
+        "text": "keep"
+      }
+    ],
+    "rules": [
+      {
+        "action": "UpdateOnly",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [
+        "add"
+      ],
+      "updated": [
+        "change"
+      ],
+      "deleted": [],
+      "identical": []
+    }
+  },
+  {
+    "name": "install-only",
+    "sources": [
+      {
+        "path": "change",
+        "text": "new",
+        "checksum": true
+      },
+      {
+        "path": "add",
+        "text": "add",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "change",
+        "text": "old"
+      },
+      {
+        "path": "keep",
+        "text": "keep"
+      }
+    ],
+    "rules": [
+      {
+        "action": "InstallOnly",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [
+        "add"
+      ],
+      "updated": [],
+      "deleted": [],
+      "identical": []
+    }
+  },
+  {
+    "name": "ordered-exclusion",
+    "sources": [
+      {
+        "path": "config.json",
+        "text": "new",
+        "checksum": true
+      },
+      {
+        "path": "file",
+        "text": "123",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "config.json",
+        "text": "old"
+      },
+      {
+        "path": "file",
+        "text": "old"
+      }
+    ],
+    "rules": [
+      {
+        "action": "Exclude",
+        "pattern": "config.*",
+        "condition": "Always"
+      },
+      {
+        "action": "FullSync",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [],
+      "updated": [
+        "file"
+      ],
+      "deleted": [],
+      "identical": []
+    }
+  },
+  {
+    "name": "missing-checksum",
+    "sources": [
+      {
+        "path": "file",
+        "text": "new",
+        "checksum": false
+      }
+    ],
+    "targets": [
+      {
+        "path": "file",
+        "text": "old"
+      }
+    ],
+    "rules": [
+      {
+        "action": "FullSync",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [],
+      "updated": [],
+      "deleted": [],
+      "identical": [
+        "file"
+      ]
+    }
+  },
+  {
+    "name": "conditional-rule",
+    "sources": [
+      {
+        "path": "config.json",
+        "text": "new",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "config.json",
+        "text": "old"
+      }
+    ],
+    "rules": [
+      {
+        "action": "FullSync",
+        "pattern": "config.*",
+        "condition": "OnNewVersion"
+      },
+      {
+        "action": "InstallOnly",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [],
+      "updated": [],
+      "deleted": [],
+      "identical": []
+    }
+  },
+  {
+    "name": "forced-rule",
+    "sources": [
+      {
+        "path": "config.json",
+        "text": "new",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "config.json",
+        "text": "old"
+      }
+    ],
+    "rules": [
+      {
+        "action": "FullSync",
+        "pattern": "config.*",
+        "condition": "OnNewVersion"
+      },
+      {
+        "action": "InstallOnly",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {
+      "isForced": true
+    },
+    "expected": {
+      "added": [],
+      "updated": [
+        "config.json"
+      ],
+      "deleted": [],
+      "identical": []
+    }
+  },
+  {
+    "name": "case-insensitive",
+    "sources": [
+      {
+        "path": "FILE.TXT",
+        "text": "123",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "file.txt",
+        "text": "123"
+      }
+    ],
+    "rules": [
+      {
+        "action": "FullSync",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [],
+      "updated": [],
+      "deleted": [],
+      "identical": [
+        "FILE.TXT"
+      ]
+    }
+  },
+  {
+    "name": "glob-recursion",
+    "sources": [
+      {
+        "path": "root.txt",
+        "text": "123",
+        "checksum": true
+      },
+      {
+        "path": "a/b/nested.txt",
+        "text": "123",
+        "checksum": true
+      }
+    ],
+    "targets": [
+      {
+        "path": "a/b/nested.txt",
+        "text": "old"
+      }
+    ],
+    "rules": [
+      {
+        "action": "UpdateOnly",
+        "pattern": "**/*.txt",
+        "condition": "Always"
+      },
+      {
+        "action": "Exclude",
+        "pattern": "**",
+        "condition": "Always"
+      }
+    ],
+    "context": {},
+    "expected": {
+      "added": [
+        "root.txt"
+      ],
+      "updated": [
+        "a/b/nested.txt"
+      ],
+      "deleted": [],
+      "identical": []
+    }
+  }
+]

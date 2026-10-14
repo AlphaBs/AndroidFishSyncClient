@@ -43,3 +43,11 @@ Thumbs.db
 
 # Gradle Wrapper JAR must be tracked when added
 !gradle/wrapper/gradle-wrapper.jar
+
+# .NET reference-fixture tool
+**/bin/
+**/obj/
+
+# Python development tools
+__pycache__/
+*.pyc
