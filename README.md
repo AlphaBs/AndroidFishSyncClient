@@ -12,10 +12,11 @@
 JDK 17과 Android SDK 35 / Build Tools 35.0.0이 필요합니다. `ANDROID_HOME`을 설정하거나 `local.properties`에 `sdk.dir`을 지정하세요. 로컬 경로와 비밀 정보는 커밋하지 않습니다.
 
 ```bash
-./gradlew :fishsync-core:test :fishsync-client:test :sample-app:assembleDebug :sample-app:lintDebug
-./gradlew :fishsync-android:connectedDebugAndroidTest  # 연결된 기기 또는 에뮬레이터 필요
+./gradlew :sample-app:assembleDebug
 ./gradlew :sample-app:installDebug
 ```
+
+변경 검증과 테스트는 GitHub Actions에 위임합니다. CI에서 JVM 테스트, Android SAF 계측 테스트, Debug/Release 빌드와 lint를 실행합니다.
 
 이 작업 환경에서는 프로젝트 내부 JDK를 사용하는 `bash scripts/gradle.sh`도 제공합니다. 다른 JDK를 지정하려면 `FISHSYNC_JAVA_HOME`을 설정하세요. VS Code의 Run Task에서도 검증·설치·계측 테스트·모의 서버를 실행할 수 있습니다.
 
@@ -58,6 +59,9 @@ python3 tools/mock-server.py
 | `sample-app` | 로그인·버킷·폴더 선택과 PULL/PUSH 검증 |
 
 ```kotlin
+import io.github.alphabs.fishsync.android.SafSyncStorage
+import io.github.alphabs.fishsync.client.FishSyncClient
+
 val storage = SafSyncStorage(context, treeUri) // 시스템 선택기로 받은 URI 권한을 먼저 유지
 val client = FishSyncClient(serverUrl, tokenProvider = { sessionToken })
 val plan = client.comparePull(bucketId, storage)

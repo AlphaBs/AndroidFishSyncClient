@@ -3,7 +3,7 @@ package io.github.alphabs.fishsync.android
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import io.github.alphabs.fishsync.core.FileSyncStorage
+import io.github.alphabs.fishsync.core.files.FileSyncStorage
 import java.io.File
 
 object AndroidStorage {

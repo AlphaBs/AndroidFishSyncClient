@@ -3,7 +3,13 @@ package io.github.alphabs.fishsync.android
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.alphabs.fishsync.core.*
+import io.github.alphabs.fishsync.core.files.Checksum
+import io.github.alphabs.fishsync.core.files.SourceFile
+import io.github.alphabs.fishsync.core.hash
+import io.github.alphabs.fishsync.core.syncer.SyncAction
+import io.github.alphabs.fishsync.core.syncer.SyncEngine
+import io.github.alphabs.fishsync.core.syncer.SyncFailure
+import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before

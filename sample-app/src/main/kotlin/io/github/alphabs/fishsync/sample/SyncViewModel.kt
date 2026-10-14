@@ -7,9 +7,9 @@ import androidx.lifecycle.viewModelScope
 import io.github.alphabs.fishsync.android.AndroidStorage
 import io.github.alphabs.fishsync.android.SafSyncStorage
 import io.github.alphabs.fishsync.client.FishSyncClient
-import io.github.alphabs.fishsync.core.SyncPlan
-import io.github.alphabs.fishsync.core.SyncProgress
-import io.github.alphabs.fishsync.core.SyncStorage
+import io.github.alphabs.fishsync.core.files.SyncStorage
+import io.github.alphabs.fishsync.core.progress.SyncProgress
+import io.github.alphabs.fishsync.core.syncer.SyncPlan
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope

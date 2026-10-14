@@ -1,6 +1,6 @@
 # core 객체 구조
 
-원본 FishSyncClient의 역할 구분을 Kotlin 인터페이스와 기본 구현으로 옮긴다. 모든 공개 타입은 기존 `io.github.alphabs.fishsync.core` 패키지에 두며 인터페이스와 구현체는 별도 파일로 관리한다.
+원본 FishSyncClient의 역할 구분을 Kotlin 인터페이스와 기본 구현으로 옮긴다. 원본의 영역별 디렉터리를 소문자 Kotlin 하위 패키지로 옮기며 인터페이스와 구현체는 별도 파일로 관리한다.
 
 | 원본 역할 | Kotlin 계약 | 기본 구현과 책임 |
 | --- | --- | --- |
@@ -12,9 +12,30 @@
 | 파일 저장소 | `ReadableSyncStorage`, `WritableSyncStorage` | `FileSyncStorage`, Android의 `SafSyncStorage` |
 | 컬렉션 동기화 조율 | `SyncEngine` | 경로·규칙 검증, 계획 생성, 저장소 잠금, 적용·삭제 순서와 부분 결과 관리 |
 
+## 패키지와 디렉터리
+
+기준 디렉터리는 `fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core`다. 각 디렉터리와 Kotlin `package` 선언을 일치시킨다.
+
+| 원본 디렉터리 | Kotlin 하위 패키지·디렉터리 | 주요 객체 |
+| --- | --- | --- |
+| `Files` | `files` | `SourceFile`, `FileEntry`, `SyncFilePair`, 저장소 계약과 구현 |
+| `FileComparers` | `filecomparers` | `FileComparer`, `FileComparerFactory`, 크기·체크섬·복합 비교기 |
+| `Syncer` | `syncer` | `SyncEngine`, `SyncRuleEvaluator`, 규칙·계획·결과, 전송기 |
+| `Versions` | `versions` | `VersionManager`, `VersionState`, `NullVersionManager` |
+| `Progress` | `progress` | `SyncProgress` |
+| `Internals` | `internals` | 저장소 잠금과 변경 검사 |
+| 루트 경로·해시 도구 | `core` 루트 | `Paths.kt`, `Checksums.kt` |
+
+client, Android, 샘플 앱과 테스트의 import도 이 구조를 사용한다. 기존 루트 패키지에 타입 별칭은 남기지 않는다.
+
 ## 조립과 확장
 
 ```kotlin
+import io.github.alphabs.fishsync.client.FishSyncClient
+import io.github.alphabs.fishsync.core.filecomparers.DefaultFileComparerFactory
+import io.github.alphabs.fishsync.core.syncer.DefaultSyncFilePairSyncer
+import io.github.alphabs.fishsync.core.syncer.SyncEngine
+
 val engine = SyncEngine(
     comparerFactory = DefaultFileComparerFactory(),
     filePairSyncer = DefaultSyncFilePairSyncer(),
@@ -22,9 +43,9 @@ val engine = SyncEngine(
 val client = FishSyncClient(serverUrl, engine = engine)
 ```
 
-기본 인자 덕분에 기존 `SyncEngine()`과 `FishSyncClient(...)` 호출은 그대로 사용할 수 있다. 사용자 정의 비교기는 `FileComparerFactory`를 통해 주입한다. 비교 정책을 바꾸더라도 기본 전송기의 크기·체크섬 검증은 유지된다.
+새 패키지를 import하면 기본 인자 덕분에 `SyncEngine()`과 `FishSyncClient(...)` 호출 방식은 그대로 사용할 수 있다. 사용자 정의 비교기는 `FileComparerFactory`를 통해 주입한다. 비교 정책을 바꾸더라도 기본 전송기의 크기·체크섬 검증은 유지된다.
 
-`compare`는 읽기 전용 저장소만 요구하며 `pull`은 쓰기 가능한 저장소를 요구한다. 기존 `SyncStorage`는 `WritableSyncStorage`를 상속하므로 기존 일반 파일·SAF 구현은 그대로 사용할 수 있다. JVM 메서드 서명은 바뀌므로 기존 바이너리 소비자는 다시 빌드해야 한다. 공개 배포 전 단계이며 바이너리 호환 브리지는 추가하지 않는다.
+`compare`는 읽기 전용 저장소만 요구하며 `pull`은 쓰기 가능한 저장소를 요구한다. 기존 `SyncStorage`는 `WritableSyncStorage`를 상속하므로 기존 일반 파일·SAF 구현은 그대로 사용할 수 있다. 패키지와 JVM 메서드 서명이 바뀌므로 기존 소비자는 import를 수정하고 다시 빌드해야 한다. 공개 배포 전 단계이며 바이너리 호환 브리지는 추가하지 않는다.
 
 ## 전송 구현의 계약
 
