@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-class SyncEngine(
+class SyncFileCollectionSyncer(
     val caseInsensitive: Boolean = true,
     private val comparerFactory: FileComparerFactory = DefaultFileComparerFactory(),
     private val filePairSyncer: SyncFilePairSyncer = DefaultSyncFilePairSyncer(),
@@ -29,7 +29,7 @@ class SyncEngine(
     private val events = MutableSharedFlow<SyncProgress>(extraBufferCapacity = 64)
     val progress = events.asSharedFlow()
 
-    suspend fun compare(
+    suspend fun compareFiles(
         sources: List<SourceFile>,
         storage: ReadableSyncStorage,
         rules: List<SyncRule>,
@@ -39,7 +39,7 @@ class SyncEngine(
             compareInternal(sources, storage, rules, context)
         }
 
-    suspend fun pull(
+    suspend fun compareAndSyncFiles(
         sources: List<SourceFile>,
         storage: WritableSyncStorage,
         rules: List<SyncRule>,

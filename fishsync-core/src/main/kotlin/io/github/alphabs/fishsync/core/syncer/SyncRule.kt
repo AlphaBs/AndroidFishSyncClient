@@ -1,7 +1,5 @@
 package io.github.alphabs.fishsync.core.syncer
 
-import io.github.alphabs.fishsync.core.files.Checksum
-
 enum class SyncAction { FullSync, UpdateOnly, InstallOnly, Exclude }
 
 enum class SyncCondition { Always, OnNewVersion }

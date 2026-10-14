@@ -8,8 +8,8 @@ import io.github.alphabs.fishsync.core.syncer.IntegrityException
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
 import io.github.alphabs.fishsync.core.syncer.SyncFailure
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncRule
 import io.github.alphabs.fishsync.core.syncer.glob
 import io.github.alphabs.fishsync.core.versions.VersionState
@@ -106,7 +106,7 @@ class CoreTest {
                         SyncRule(SyncAction.FullSync),
                     )
                 val sources = listOf(source("keep.txt", "new"), source("add.txt", "new"))
-                val plan = SyncEngine().compare(sources, storage, rules)
+                val plan = SyncFileCollectionSyncer().compareFiles(sources, storage, rules)
                 assertEquals(listOf("add.txt"), plan.added)
                 assertTrue(
                     plan.identical
@@ -114,8 +114,8 @@ class CoreTest {
                 )
                 assertEquals(listOf("delete.txt"), plan.deleted)
                 assertTrue(
-                    SyncEngine()
-                        .compare(
+                    SyncFileCollectionSyncer()
+                        .compareFiles(
                             sources,
                             storage,
                             rules,
@@ -135,7 +135,7 @@ class CoreTest {
             try {
                 File(dir, "local.txt").writeText("keep")
                 val result =
-                    SyncEngine().pull(
+                    SyncFileCollectionSyncer().compareAndSyncFiles(
                         listOf(source("new.txt", "new")),
                         FileSyncStorage(dir),
                         listOf(SyncRule(SyncAction.UpdateOnly)),
@@ -156,7 +156,7 @@ class CoreTest {
             val dir = root()
             try {
                 assertFails {
-                    SyncEngine().pull(
+                    SyncFileCollectionSyncer().compareAndSyncFiles(
                         listOf(source("x", "x")),
                         FileSyncStorage(dir),
                         listOf(SyncRule(SyncAction.FullSync, "other")),
@@ -181,7 +181,7 @@ class CoreTest {
                 File(dir, "extra.txt").writeText("preserve")
                 val failure =
                     assertFailsWith<SyncFailure> {
-                        SyncEngine().pull(
+                        SyncFileCollectionSyncer().compareAndSyncFiles(
                             listOf(source("target.txt", "bad", Checksum("md5", "0".repeat(32)))),
                             FileSyncStorage(dir),
                             full,
@@ -208,7 +208,7 @@ class CoreTest {
                 val source =
                     SourceFile("target", 99, null) { throw CancellationException("cancel") }
                 assertFailsWith<CancellationException> {
-                    SyncEngine().pull(
+                    SyncFileCollectionSyncer().compareAndSyncFiles(
                         listOf(source),
                         FileSyncStorage(dir),
                         listOf(SyncRule(SyncAction.FullSync, comparison = Comparison.Size)),
@@ -228,7 +228,12 @@ class CoreTest {
                 File(dir, "remove").writeText("old")
                 val source =
                     source("a/b.txt", "123", Checksum("md5", "202CB962AC59075B964B07152D234B70"))
-                val result = SyncEngine().pull(listOf(source), FileSyncStorage(dir), full)
+                val result =
+                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                        listOf(source),
+                        FileSyncStorage(dir),
+                        full,
+                    )
                 assertEquals(listOf("a/b.txt"), result.applied)
                 assertEquals(listOf("remove"), result.deleted)
                 assertEquals("123", File(dir, "a/b.txt").readText())
@@ -244,7 +249,7 @@ class CoreTest {
             try {
                 File(dir, "file").writeText("existing")
                 val plan =
-                    SyncEngine().compare(
+                    SyncFileCollectionSyncer().compareFiles(
                         listOf(source("file", "x")),
                         FileSyncStorage(dir),
                         listOf(SyncRule(SyncAction.FullSync, comparison = Comparison.Checksum)),
@@ -262,9 +267,9 @@ class CoreTest {
             val outside = root()
             try {
                 assertFails {
-                    SyncEngine(
+                    SyncFileCollectionSyncer(
                         caseInsensitive = true,
-                    ).compare(
+                    ).compareFiles(
                         listOf(source("A", "x"), source("a", "y")),
                         FileSyncStorage(dir),
                         full,
@@ -290,10 +295,15 @@ class CoreTest {
                     listOf(
                         source("file", "123", Checksum("md5", "202cb962ac59075b964b07152d234b70")),
                     )
-                val preview = SyncEngine().compare(sources, storage, full)
+                val preview = SyncFileCollectionSyncer().compareFiles(sources, storage, full)
                 File(dir, "file").writeText("new")
                 assertFailsWith<IllegalArgumentException> {
-                    SyncEngine().pull(sources, storage, full, expectedPlan = preview)
+                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                        sources,
+                        storage,
+                        full,
+                        expectedPlan = preview,
+                    )
                 }
                 assertEquals("new", File(dir, "file").readText())
             } finally {

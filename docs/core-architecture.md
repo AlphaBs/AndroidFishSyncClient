@@ -10,7 +10,8 @@
 | `ISyncFilePairSyncer` | `SyncFilePairSyncer` | `DefaultSyncFilePairSyncer`: 단일 파일 전송·검증·적용 |
 | `IVersionManager` | `VersionManager` | `VersionState`: 파일에 버전 저장, `NullVersionManager`: 저장 없이 항상 새 버전 취급 |
 | 파일 저장소 | `ReadableSyncStorage`, `WritableSyncStorage` | `FileSyncStorage`, Android의 `SafSyncStorage` |
-| 컬렉션 동기화 조율 | `SyncEngine` | 경로·규칙 검증, 계획 생성, 저장소 잠금, 적용·삭제 순서와 부분 결과 관리 |
+| `LocalSyncer` | `LocalSyncer` | 일반 파일·SAF 대상 저장소를 고정하고 컬렉션 동기화기에 연결 |
+| 컬렉션 동기화 조율 | `SyncFileCollectionSyncer` | 경로·규칙 검증, 계획 생성, 저장소 잠금, 적용·삭제 순서와 부분 결과 관리 |
 
 ## 패키지와 디렉터리
 
@@ -20,7 +21,7 @@
 | --- | --- | --- |
 | `Files` | `files` | `SourceFile`, `FileEntry`, `SyncFilePair`, 저장소 계약과 구현 |
 | `FileComparers` | `filecomparers` | `FileComparer`, `FileComparerFactory`, 크기·체크섬·복합 비교기 |
-| `Syncer` | `syncer` | `SyncEngine`, `SyncRuleEvaluator`, 규칙·계획·결과, 전송기 |
+| `Syncer` | `syncer` | `SyncFileCollectionSyncer`, `SyncRuleEvaluator`, 규칙·계획·결과, 전송기 |
 | `Versions` | `versions` | `VersionManager`, `VersionState`, `NullVersionManager` |
 | `Progress` | `progress` | `SyncProgress` |
 | `Internals` | `internals` | 저장소 잠금과 변경 검사 |
@@ -34,18 +35,18 @@ client, Android, 샘플 앱과 테스트의 import도 이 구조를 사용한다
 import io.github.alphabs.fishsync.client.FishSyncClient
 import io.github.alphabs.fishsync.core.filecomparers.DefaultFileComparerFactory
 import io.github.alphabs.fishsync.core.syncer.DefaultSyncFilePairSyncer
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 
-val engine = SyncEngine(
+val collectionSyncer = SyncFileCollectionSyncer(
     comparerFactory = DefaultFileComparerFactory(),
     filePairSyncer = DefaultSyncFilePairSyncer(),
 )
-val client = FishSyncClient(serverUrl, engine = engine)
+val client = FishSyncClient(serverUrl, collectionSyncer = collectionSyncer)
 ```
 
-새 패키지를 import하면 기본 인자 덕분에 `SyncEngine()`과 `FishSyncClient(...)` 호출 방식은 그대로 사용할 수 있다. 사용자 정의 비교기는 `FileComparerFactory`를 통해 주입한다. 비교 정책을 바꾸더라도 기본 전송기의 크기·체크섬 검증은 유지된다.
+새 패키지를 import하면 기본 인자 덕분에 `SyncFileCollectionSyncer()`과 `FishSyncClient(...)` 호출 방식은 그대로 사용할 수 있다. 사용자 정의 비교기는 `FileComparerFactory`를 통해 주입한다. 비교 정책을 바꾸더라도 기본 전송기의 크기·체크섬 검증은 유지된다.
 
-`compare`는 읽기 전용 저장소만 요구하며 `pull`은 쓰기 가능한 저장소를 요구한다. 기존 `SyncStorage`는 `WritableSyncStorage`를 상속하므로 기존 일반 파일·SAF 구현은 그대로 사용할 수 있다. 패키지와 JVM 메서드 서명이 바뀌므로 기존 소비자는 import를 수정하고 다시 빌드해야 한다. 공개 배포 전 단계이며 바이너리 호환 브리지는 추가하지 않는다.
+`SyncFileCollectionSyncer.compareFiles`는 읽기 전용 저장소만 요구하며 `compareAndSyncFiles`는 쓰기 가능한 저장소를 요구한다. 서버 클라이언트의 PULL은 `LocalSyncer`를 통해 대상을 연결한다. 기존 `SyncStorage`는 `WritableSyncStorage`를 상속하므로 기존 일반 파일·SAF 구현은 그대로 사용할 수 있다. 패키지와 JVM 메서드 서명이 바뀌므로 기존 소비자는 import를 수정하고 다시 빌드해야 한다. 공개 배포 전 단계이며 바이너리 호환 브리지는 추가하지 않는다.
 
 ## 전송 구현의 계약
 
@@ -56,3 +57,9 @@ val client = FishSyncClient(serverUrl, engine = engine)
 ## 검증
 
 테스트는 GitHub Actions에 위임한다. 기존 원본 비교 fixture와 HTTP 계약 테스트에 더해 읽기 전용 저장소, 비교기 주입, 전송기 주입, 자원 정리 실패 시 부분 적용 기록, 버전 관리자 정책을 확인한다. Android SAF 계측 테스트도 CI 에뮬레이터에서 실행한다.
+
+## 원본과의 차이
+
+`SyncEngine`은 초기 Kotlin 구현에서 임의로 도입했던 이름으로 원본에는 없다. 원본에 대응하도록 `SyncFileCollectionSyncer`와 `LocalSyncer`로 조율과 대상 연결 책임을 분리했다.
+
+현재 객체 모델이 원본과 완전히 같지는 않다. 원본의 추상 `SyncFile` 계층은 Kotlin에서 읽기 원본인 `SourceFile`과 SAF 교체를 지원하는 저장소 계약으로 표현한다. 원본의 `ISyncFilePairSyncer`는 파일 쌍 컬렉션의 비교·동기화를 담당하지만 현재 `SyncFilePairSyncer`는 단일 파일의 안전한 적용을 담당한다. 파일 쌍 비교는 `FileComparer`에 위임한다. 원본의 별도 삭제 호출은 Kotlin의 기존 실패 보호 계약을 유지하기 위해 컬렉션 동기화기의 마지막 단계에 남겨 둔다. 병렬 처리와 진행률 집계 객체의 전체 이식은 아직 하지 않았다.

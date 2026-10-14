@@ -7,8 +7,8 @@ import io.github.alphabs.fishsync.core.files.Checksum
 import io.github.alphabs.fishsync.core.files.SourceFile
 import io.github.alphabs.fishsync.core.hash
 import io.github.alphabs.fishsync.core.syncer.SyncAction
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
 import io.github.alphabs.fishsync.core.syncer.SyncFailure
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -62,13 +62,13 @@ class StorageInstrumentedTest {
     fun safCreateReplaceAndDelete() =
         runBlocking<Unit> {
             val storage = storage()
-            val engine = SyncEngine()
-            engine.pull(
+            val collectionSyncer = SyncFileCollectionSyncer()
+            collectionSyncer.compareAndSyncFiles(
                 listOf(source("a/file.txt", "123"), source("extra.txt", "extra")),
                 storage,
                 rules,
             )
-            engine.pull(
+            collectionSyncer.compareAndSyncFiles(
                 listOf(source("a/file.txt", "new", Checksum("md5", hash("new".byteInputStream())))),
                 storage,
                 rules,
@@ -92,10 +92,14 @@ class StorageInstrumentedTest {
     fun safCorruptTransferPreservesOriginalAndSkipsDelete() =
         runBlocking<Unit> {
             val storage = storage()
-            val engine = SyncEngine()
-            engine.pull(listOf(source("file", "old"), source("extra", "keep")), storage, rules)
+            val collectionSyncer = SyncFileCollectionSyncer()
+            collectionSyncer.compareAndSyncFiles(
+                listOf(source("file", "old"), source("extra", "keep")),
+                storage,
+                rules,
+            )
             try {
-                engine.pull(
+                collectionSyncer.compareAndSyncFiles(
                     listOf(source("file", "bad", Checksum("md5", "0".repeat(32)))),
                     storage,
                     rules,
@@ -124,12 +128,12 @@ class StorageInstrumentedTest {
     fun providerRenameFailurePreservesOriginal() =
         runBlocking<Unit> {
             val storage = storage()
-            val engine = SyncEngine()
-            engine.pull(listOf(source("file", "old")), storage, rules)
+            val collectionSyncer = SyncFileCollectionSyncer()
+            collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
             context.contentResolver
                 .call(authority, "rejectRename", null, null)
             try {
-                engine.pull(
+                collectionSyncer.compareAndSyncFiles(
                     listOf(source("file", "new", Checksum("md5", hash("new".byteInputStream())))),
                     storage,
                     rules,
@@ -152,12 +156,12 @@ class StorageInstrumentedTest {
     fun providerListingFailureIsNotAnEmptyFolder() =
         runBlocking<Unit> {
             val storage = storage()
-            val engine = SyncEngine()
-            engine.pull(listOf(source("file", "old")), storage, rules)
+            val collectionSyncer = SyncFileCollectionSyncer()
+            collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
             context.contentResolver
                 .call(authority, "rejectQuery", null, null)
             try {
-                engine.pull(emptyList(), storage, rules)
+                collectionSyncer.compareAndSyncFiles(emptyList(), storage, rules)
                 fail("Expected listing failure")
             } catch (
                 _: IllegalStateException,
@@ -182,7 +186,11 @@ class StorageInstrumentedTest {
                     .getInstrumentation()
                     .targetContext
             val storage = AndroidStorage.appFiles(target)
-            SyncEngine().pull(listOf(source("한글/file.txt", "123")), storage, rules)
+            SyncFileCollectionSyncer().compareAndSyncFiles(
+                listOf(source("한글/file.txt", "123")),
+                storage,
+                rules,
+            )
             assertEquals(
                 "123",
                 storage

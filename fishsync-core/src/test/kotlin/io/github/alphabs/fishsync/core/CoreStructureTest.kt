@@ -16,8 +16,8 @@ import io.github.alphabs.fishsync.core.progress.SyncProgress
 import io.github.alphabs.fishsync.core.syncer.Comparison
 import io.github.alphabs.fishsync.core.syncer.DefaultSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
 import io.github.alphabs.fishsync.core.syncer.SyncFailure
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncRule
 import io.github.alphabs.fishsync.core.versions.NullVersionManager
@@ -63,8 +63,8 @@ class CoreStructureTest {
                         false
                     }
                 }
-            val engine = SyncEngine(comparerFactory = factory)
-            val plan = engine.compare(listOf(source()), storage, rules)
+            val collectionSyncer = SyncFileCollectionSyncer(comparerFactory = factory)
+            val plan = collectionSyncer.compareFiles(listOf(source()), storage, rules)
 
             assertEquals(listOf("file.txt"), plan.updated)
             assertEquals(listOf(Comparison.Checksum), selectedComparisons)
@@ -125,8 +125,8 @@ class CoreStructureTest {
                             )
                         }
                     }
-                val engine = SyncEngine(filePairSyncer = syncer)
-                val result = engine.pull(listOf(source()), storage, rules)
+                val collectionSyncer = SyncFileCollectionSyncer(filePairSyncer = syncer)
+                val result = collectionSyncer.compareAndSyncFiles(listOf(source()), storage, rules)
 
                 assertEquals(listOf("file.txt"), synchronizedPaths)
                 assertEquals(listOf("file.txt"), result.applied)
@@ -165,7 +165,11 @@ class CoreStructureTest {
                     }
                 val failure =
                     assertFailsWith<SyncFailure> {
-                        SyncEngine().pull(listOf(source()), storage, rules)
+                        SyncFileCollectionSyncer().compareAndSyncFiles(
+                            listOf(source()),
+                            storage,
+                            rules,
+                        )
                     }
 
                 assertEquals(listOf("file.txt"), failure.applied)

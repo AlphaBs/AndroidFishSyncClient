@@ -6,7 +6,7 @@ import io.github.alphabs.fishsync.core.files.SourceFile
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
@@ -109,7 +109,7 @@ class ReferenceContractTest {
                             .getValue("context")
                             .jsonObject
                     val result =
-                        SyncEngine().compare(
+                        SyncFileCollectionSyncer().compareFiles(
                             sources,
                             FileSyncStorage(dir),
                             rules,

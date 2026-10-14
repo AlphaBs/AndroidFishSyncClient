@@ -9,8 +9,9 @@ import io.github.alphabs.fishsync.core.internals.StorageLocks
 import io.github.alphabs.fishsync.core.progress.SyncProgress
 import io.github.alphabs.fishsync.core.relativePath
 import io.github.alphabs.fishsync.core.syncer.ChangedFileException
+import io.github.alphabs.fishsync.core.syncer.LocalSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
-import io.github.alphabs.fishsync.core.syncer.SyncEngine
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncPlan
 import io.github.alphabs.fishsync.core.syncer.SyncResult
 import io.github.alphabs.fishsync.core.syncer.SyncRule
@@ -44,7 +45,8 @@ class FishSyncClient(
     serverUrl: String,
     private val tokenProvider: () -> String? = { null },
     http: OkHttpClient = defaultHttpClient(),
-    val engine: SyncEngine = SyncEngine(caseInsensitive = true),
+    val collectionSyncer: SyncFileCollectionSyncer =
+        SyncFileCollectionSyncer(caseInsensitive = true),
 ) {
     private val base =
         serverUrl
@@ -54,7 +56,7 @@ class FishSyncClient(
     private val json = Json { ignoreUnknownKeys = true }
     private val uploadProgress = MutableSharedFlow<SyncProgress>(extraBufferCapacity = 64)
 
-    val progress get() = merge(engine.progress, uploadProgress)
+    val progress get() = merge(collectionSyncer.progress, uploadProgress)
 
     suspend fun login(
         username: String,
@@ -116,7 +118,7 @@ class FishSyncClient(
         rules: List<SyncRule> = defaultRules(),
     ): SyncPlan {
         val sources = sources(files(id))
-        return engine.compare(sources, storage, rules)
+        return LocalSyncer(storage, collectionSyncer).compareFiles(sources, rules)
     }
 
     suspend fun pull(
@@ -126,7 +128,11 @@ class FishSyncClient(
         expectedPlan: SyncPlan? = null,
     ): SyncResult {
         val sources = sources(files(id))
-        return engine.pull(sources, storage, rules, expectedPlan = expectedPlan)
+        return LocalSyncer(storage, collectionSyncer).compareAndSyncFiles(
+            sources,
+            rules,
+            expectedPlan = expectedPlan,
+        )
     }
 
     suspend fun comparePush(
