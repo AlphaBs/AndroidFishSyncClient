@@ -1,4 +1,9 @@
-plugins { kotlin("jvm"); kotlin("plugin.serialization"); `java-library`; `maven-publish` }
+plugins {
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    `java-library`
+    `maven-publish`
+}
 kotlin { jvmToolchain(17) }
 dependencies {
     api(project(":fishsync-core"))

@@ -19,6 +19,17 @@ JDK 17과 Android SDK 35 / Build Tools 35.0.0이 필요합니다. `ANDROID_HOME`
 
 이 작업 환경에서는 프로젝트 내부 JDK를 사용하는 `bash scripts/gradle.sh`도 제공합니다. 다른 JDK를 지정하려면 `FISHSYNC_JAVA_HOME`을 설정하세요. VS Code의 Run Task에서도 검증·설치·계측 테스트·모의 서버를 실행할 수 있습니다.
 
+## 코드 스타일
+
+읽기 쉬운 코드를 우선하며 주석은 한글을 선호합니다. 문장과 제어 흐름을 나누고, 메서드 체이닝은 한 줄에 한 메서드씩 작성합니다. 긴 인자 목록은 줄바꿈하며 복잡한 조건은 `if`/`else`나 별도 메서드로 풉니다. 논리적인 작업 단계 사이에는 공백 라인을 둡니다.
+
+`.editorconfig`와 고정 버전 ktlint로 Kotlin 코드와 Gradle 스크립트를 검사합니다. CI에서도 같은 검사를 실행합니다.
+
+```bash
+./gradlew formatKotlin
+./gradlew checkKotlinStyle
+```
+
 ## 샘플 앱
 
 서버 API URL(`/api` 포함)과 로그인 정보를 입력하고 버킷을 선택합니다. 앱 전용 폴더 또는 시스템 폴더 선택기로 동기화 대상 폴더를 고릅니다. PULL/PUSH 방향을 정하고 **변경 목록 비교 → 동기화 실행 → 확인** 순서로 진행하세요.

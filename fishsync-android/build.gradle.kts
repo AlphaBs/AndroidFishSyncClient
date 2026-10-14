@@ -1,10 +1,22 @@
-plugins { id("com.android.library"); kotlin("android"); `maven-publish` }
+plugins {
+    id("com.android.library")
+    kotlin("android")
+    `maven-publish`
+}
 android {
     publishing { singleVariant("release") { withSourcesJar() } }
     namespace = "io.github.alphabs.fishsync.android"
     compileSdk = 35
-    defaultConfig { minSdk = 26; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
-    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner =
+            "androidx.test.runner.AndroidJUnitRunner"
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility =
+            JavaVersion.VERSION_17
+    }
 }
 kotlin { jvmToolchain(17) }
 dependencies {
@@ -14,4 +26,8 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
 }
 
-afterEvaluate { publishing { publications { create<MavenPublication>("release") { from(components["release"]) } } } }
+afterEvaluate {
+    publishing {
+        publications { create<MavenPublication>("release") { from(components["release"]) } }
+    }
+}

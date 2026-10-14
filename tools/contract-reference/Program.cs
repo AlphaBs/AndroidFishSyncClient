@@ -5,28 +5,143 @@ using FishSyncClient.Files;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Syncer;
 
-var cases = JsonNode.Parse(await File.ReadAllTextAsync(args[0]))!.AsArray();
-foreach (var item in cases) {
-    var test = item!.AsObject();
-    var temp = Path.Combine(Path.GetTempPath(), "fishsync-contract-" + Guid.NewGuid());
-    var sourceRoot = Path.Combine(temp, "source"); var targetRoot = Path.Combine(temp, "target");
-    Directory.CreateDirectory(sourceRoot); Directory.CreateDirectory(targetRoot);
-    try {
-        var pathOptions = new PathOptions();
-        var sources = new List<SyncFile>();
-        foreach (var node in test["sources"]!.AsArray()) {
-            var path = node!["path"]!.GetValue<string>(); var text = node["text"]!.GetValue<string>();
-            var fullPath = Path.Combine(sourceRoot, path); Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!); await File.WriteAllTextAsync(fullPath, text);
-            using var input = File.OpenRead(fullPath);
-            var checksum = node["checksum"]!.GetValue<bool>() ? new SyncFileChecksum("md5", ChecksumAlgorithms.ComputeMD5(input)) : (SyncFileChecksum?)null;
-            sources.Add(new LocalSyncFile(RootedPath.Create(sourceRoot, path, pathOptions)) { Metadata = new SyncFileMetadata { Size = new FileInfo(fullPath).Length, Checksum = checksum } });
-        }
-        foreach (var node in test["targets"]!.AsArray()) { var path = Path.Combine(targetRoot, node!["path"]!.GetValue<string>()); Directory.CreateDirectory(Path.GetDirectoryName(path)!); await File.WriteAllTextAsync(path, node["text"]!.GetValue<string>()); }
-        var rules = test["rules"]!.AsArray().Select(node => new SyncRule(Enum.Parse<SyncAction>(node!["action"]!.GetValue<string>()), Enum.Parse<SyncCondition>(node["condition"]!.GetValue<string>()), node["pattern"]!.GetValue<string>(), new LocalFileChecksumComparer())).ToArray();
-        var context = test["context"]!.AsObject();
-        var result = await new LocalSyncer(targetRoot, pathOptions, new ParallelSyncFilePairSyncer(1)).CompareFiles(sources, new SyncerOptions { Rules = rules, Context = new SyncContext { IsForced = context["isForced"]?.GetValue<bool>() ?? false, IsNewVersion = context["isNewVersion"]?.GetValue<bool>() ?? false } });
-        test["expected"] = JsonSerializer.SerializeToNode(new { added = result.AddedFiles.Select(f => f.Path.SubPath).Order().ToArray(), updated = result.UpdatedFilePairs.Select(f => f.Source.Path.SubPath).Order().ToArray(), deleted = result.DeletedFiles.Select(f => f.Path.SubPath).Order().ToArray(), identical = result.IdenticalFilePairs.Select(f => f.Source.Path.SubPath).Order().ToArray() });
-    } finally { Directory.Delete(temp, true); }
+var input = await File.ReadAllTextAsync(args[0]);
+var cases = JsonNode.Parse(input)!.AsArray();
+
+foreach (var item in cases)
+{
+    var fixture = item!.AsObject();
+    var temporaryRoot = Path.Combine(
+        Path.GetTempPath(),
+        "fishsync-contract-" + Guid.NewGuid());
+    var sourceRoot = Path.Combine(temporaryRoot, "source");
+    var targetRoot = Path.Combine(temporaryRoot, "target");
+
+    Directory.CreateDirectory(sourceRoot);
+    Directory.CreateDirectory(targetRoot);
+
+    try
+    {
+        await CompareFixture(fixture, sourceRoot, targetRoot);
+    }
+    finally
+    {
+        Directory.Delete(temporaryRoot, true);
+    }
 }
-await File.WriteAllTextAsync(args[1], cases.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+
+var output = cases.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+await File.WriteAllTextAsync(args[1], output + "\n");
 Console.WriteLine($"Generated {cases.Count} reference cases.");
+
+static async Task CompareFixture(JsonObject fixture, string sourceRoot, string targetRoot)
+{
+    var pathOptions = new PathOptions();
+    var sources = await CreateSources(fixture["sources"]!.AsArray(), sourceRoot, pathOptions);
+
+    foreach (var target in fixture["targets"]!.AsArray())
+    {
+        await WriteFixtureFile(targetRoot, target!);
+    }
+
+    var rules = CreateRules(fixture["rules"]!.AsArray());
+    var context = fixture["context"]!.AsObject();
+    var options = new SyncerOptions
+    {
+        Rules = rules,
+        Context = new SyncContext
+        {
+            IsForced = context["isForced"]?.GetValue<bool>() ?? false,
+            IsNewVersion = context["isNewVersion"]?.GetValue<bool>() ?? false
+        }
+    };
+    var syncer = new LocalSyncer(
+        targetRoot,
+        pathOptions,
+        new ParallelSyncFilePairSyncer(1));
+
+    var result = await syncer.CompareFiles(sources, options);
+    fixture["expected"] = CreateExpectedResult(result);
+}
+
+static async Task<List<SyncFile>> CreateSources(
+    JsonArray entries,
+    string root,
+    PathOptions pathOptions)
+{
+    var sources = new List<SyncFile>();
+
+    foreach (var entry in entries)
+    {
+        var path = entry!["path"]!.GetValue<string>();
+        var fullPath = await WriteFixtureFile(root, entry);
+        using var input = File.OpenRead(fullPath);
+        SyncFileChecksum? checksum = null;
+
+        if (entry["checksum"]!.GetValue<bool>())
+        {
+            checksum = new SyncFileChecksum("md5", ChecksumAlgorithms.ComputeMD5(input));
+        }
+
+        var file = new LocalSyncFile(RootedPath.Create(root, path, pathOptions))
+        {
+            Metadata = new SyncFileMetadata
+            {
+                Size = new FileInfo(fullPath).Length,
+                Checksum = checksum
+            }
+        };
+        sources.Add(file);
+    }
+
+    return sources;
+}
+
+static async Task<string> WriteFixtureFile(string root, JsonNode entry)
+{
+    var path = Path.Combine(root, entry["path"]!.GetValue<string>());
+    var text = entry["text"]!.GetValue<string>();
+
+    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+    await File.WriteAllTextAsync(path, text);
+    return path;
+}
+
+static SyncRule[] CreateRules(JsonArray entries)
+{
+    var rules = new List<SyncRule>();
+
+    foreach (var entry in entries)
+    {
+        var action = Enum.Parse<SyncAction>(entry!["action"]!.GetValue<string>());
+        var condition = Enum.Parse<SyncCondition>(entry["condition"]!.GetValue<string>());
+        var pattern = entry["pattern"]!.GetValue<string>();
+
+        rules.Add(new SyncRule(action, condition, pattern, new LocalFileChecksumComparer()));
+    }
+
+    return rules.ToArray();
+}
+
+static JsonNode? CreateExpectedResult(SyncFileCollectionComparerResult result)
+{
+    return JsonSerializer.SerializeToNode(new
+    {
+        added = result.AddedFiles
+            .Select(file => file.Path.SubPath)
+            .Order()
+            .ToArray(),
+        updated = result.UpdatedFilePairs
+            .Select(pair => pair.Source.Path.SubPath)
+            .Order()
+            .ToArray(),
+        deleted = result.DeletedFiles
+            .Select(file => file.Path.SubPath)
+            .Order()
+            .ToArray(),
+        identical = result.IdenticalFilePairs
+            .Select(pair => pair.Source.Path.SubPath)
+            .Order()
+            .ToArray()
+    });
+}

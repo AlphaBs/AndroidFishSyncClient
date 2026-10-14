@@ -1,4 +1,8 @@
-plugins { kotlin("jvm"); `java-library`; `maven-publish` }
+plugins {
+    kotlin("jvm")
+    `java-library`
+    `maven-publish`
+}
 kotlin { jvmToolchain(17) }
 dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")

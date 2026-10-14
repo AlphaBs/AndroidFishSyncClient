@@ -1,11 +1,18 @@
 package io.github.alphabs.fishsync.core
 
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
-/** Serializes library writes to the same root, including PULL and PUSH snapshots. */
+/** 같은 루트의 PULL 적용과 PUSH 스냅샷 생성을 직렬화한다. */
 object StorageLocks {
     private val locks = ConcurrentHashMap<String, Mutex>()
-    suspend fun <T> run(storage: SyncStorage, block: suspend () -> T): T = locks.getOrPut(storage.identity) { Mutex() }.withLock { block() }
+
+    suspend fun <T> run(
+        storage: SyncStorage,
+        block: suspend () -> T,
+    ): T {
+        val lock = locks.getOrPut(storage.identity) { Mutex() }
+        return lock.withLock { block() }
+    }
 }

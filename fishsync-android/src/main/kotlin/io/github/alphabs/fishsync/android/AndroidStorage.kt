@@ -8,9 +8,19 @@ import java.io.File
 
 object AndroidStorage {
     fun appFiles(context: Context) = FileSyncStorage(File(context.filesDir, "sync"))
-    fun retainFolder(context: Context, uri: Uri, grantedFlags: Int) {
-        val flags = grantedFlags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        require(flags == Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) { "Read/write folder permission is required" }
-        context.contentResolver.takePersistableUriPermission(uri, flags)
+
+    fun retainFolder(
+        context: Context,
+        uri: Uri,
+        grantedFlags: Int,
+    ) {
+        val requiredFlags =
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        val flags = grantedFlags and requiredFlags
+        require(flags == requiredFlags) { "Read/write folder permission is required" }
+
+        context.contentResolver
+            .takePersistableUriPermission(uri, flags)
     }
 }

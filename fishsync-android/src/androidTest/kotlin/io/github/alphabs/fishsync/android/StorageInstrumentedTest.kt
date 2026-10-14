@@ -1,58 +1,188 @@
 package io.github.alphabs.fishsync.android
 
 import android.net.Uri
-import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import io.github.alphabs.fishsync.core.*
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class StorageInstrumentedTest {
-    private val context get() = InstrumentationRegistry.getInstrumentation().context
+    private val context get() =
+        InstrumentationRegistry
+            .getInstrumentation()
+            .context
     private val authority = Uri.parse("content://io.github.alphabs.fishsync.test.documents")
-    private fun storage() = SafSyncStorage(context, Uri.parse("content://io.github.alphabs.fishsync.test.documents/tree/root"))
+
+    private fun storage() =
+        SafSyncStorage(
+            context,
+            Uri.parse("content://io.github.alphabs.fishsync.test.documents/tree/root"),
+        )
+
     private val rules = listOf(SyncRule(SyncAction.FullSync))
-    private fun source(path: String, text: String, checksum: Checksum? = null) = SourceFile(path, text.length.toLong(), checksum) { text.byteInputStream() }
-    @Before fun reset() { context.contentResolver.call(authority, "resetFixture", null, null)
-        context.contentResolver.call(authority, "grantFixture", InstrumentationRegistry.getInstrumentation().targetContext.packageName, null)
+
+    private fun source(
+        path: String,
+        text: String,
+        checksum: Checksum? = null,
+    ) = SourceFile(
+        path,
+        text.length
+            .toLong(),
+        checksum,
+    ) {
+        text.byteInputStream()
     }
-    @Test fun safCreateReplaceAndDelete() = runBlocking<Unit> {
-        val storage = storage(); val engine = SyncEngine()
-        engine.pull(listOf(source("a/file.txt", "123"), source("extra.txt", "extra")), storage, rules)
-        engine.pull(listOf(source("a/file.txt", "new", Checksum("md5", hash("new".byteInputStream())))), storage, rules)
-        assertEquals("new", storage.read("a/file.txt").bufferedReader().use { it.readText() })
-        assertEquals(listOf("a/file.txt"), storage.list().map { it.path })
+
+    @Before fun reset() {
+        context.contentResolver
+            .call(authority, "resetFixture", null, null)
+        context.contentResolver.call(
+            authority,
+            "grantFixture",
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext.packageName,
+            null,
+        )
     }
-    @Test fun safCorruptTransferPreservesOriginalAndSkipsDelete() = runBlocking<Unit> {
-        val storage = storage(); val engine = SyncEngine()
-        engine.pull(listOf(source("file", "old"), source("extra", "keep")), storage, rules)
-        try { engine.pull(listOf(source("file", "bad", Checksum("md5", "0".repeat(32)))), storage, rules); fail("Expected failure") } catch (_: SyncFailure) { }
-        assertEquals("old", storage.read("file").bufferedReader().use { it.readText() })
-        assertEquals(2, storage.list().size)
-    }
-    @Test fun providerRenameFailurePreservesOriginal() = runBlocking<Unit> {
-        val storage = storage(); val engine = SyncEngine()
-        engine.pull(listOf(source("file", "old")), storage, rules)
-        context.contentResolver.call(authority, "rejectRename", null, null)
-        try { engine.pull(listOf(source("file", "new", Checksum("md5", hash("new".byteInputStream())))), storage, rules); fail("Expected failure") } catch (_: SyncFailure) { }
-        assertEquals("old", storage.read("file").bufferedReader().use { it.readText() })
-    }
-    @Test fun providerListingFailureIsNotAnEmptyFolder() = runBlocking<Unit> {
-        val storage = storage(); val engine = SyncEngine()
-        engine.pull(listOf(source("file", "old")), storage, rules)
-        context.contentResolver.call(authority, "rejectQuery", null, null)
-        try { engine.pull(emptyList(), storage, rules); fail("Expected listing failure") } catch (_: IllegalStateException) { }
-        context.contentResolver.call(authority, "allowQuery", null, null)
-        assertEquals("old", storage.read("file").bufferedReader().use { it.readText() })
-    }
-    @Test fun appPrivateStorage() = runBlocking<Unit> {
-        val target = InstrumentationRegistry.getInstrumentation().targetContext
-        val storage = AndroidStorage.appFiles(target)
-        SyncEngine().pull(listOf(source("한글/file.txt", "123")), storage, rules)
-        assertEquals("123", storage.read("한글/file.txt").bufferedReader().use { it.readText() })
-    }
+
+    @Test
+    fun safCreateReplaceAndDelete() =
+        runBlocking<Unit> {
+            val storage = storage()
+            val engine = SyncEngine()
+            engine.pull(
+                listOf(source("a/file.txt", "123"), source("extra.txt", "extra")),
+                storage,
+                rules,
+            )
+            engine.pull(
+                listOf(source("a/file.txt", "new", Checksum("md5", hash("new".byteInputStream())))),
+                storage,
+                rules,
+            )
+            assertEquals(
+                "new",
+                storage
+                    .read("a/file.txt")
+                    .bufferedReader()
+                    .use { it.readText() },
+            )
+            assertEquals(
+                listOf("a/file.txt"),
+                storage
+                    .list()
+                    .map { it.path },
+            )
+        }
+
+    @Test
+    fun safCorruptTransferPreservesOriginalAndSkipsDelete() =
+        runBlocking<Unit> {
+            val storage = storage()
+            val engine = SyncEngine()
+            engine.pull(listOf(source("file", "old"), source("extra", "keep")), storage, rules)
+            try {
+                engine.pull(
+                    listOf(source("file", "bad", Checksum("md5", "0".repeat(32)))),
+                    storage,
+                    rules,
+                )
+                fail("Expected failure")
+            } catch (
+                _: SyncFailure,
+            ) {
+            }
+            assertEquals(
+                "old",
+                storage
+                    .read("file")
+                    .bufferedReader()
+                    .use { it.readText() },
+            )
+            assertEquals(
+                2,
+                storage
+                    .list()
+                    .size,
+            )
+        }
+
+    @Test
+    fun providerRenameFailurePreservesOriginal() =
+        runBlocking<Unit> {
+            val storage = storage()
+            val engine = SyncEngine()
+            engine.pull(listOf(source("file", "old")), storage, rules)
+            context.contentResolver
+                .call(authority, "rejectRename", null, null)
+            try {
+                engine.pull(
+                    listOf(source("file", "new", Checksum("md5", hash("new".byteInputStream())))),
+                    storage,
+                    rules,
+                )
+                fail("Expected failure")
+            } catch (
+                _: SyncFailure,
+            ) {
+            }
+            assertEquals(
+                "old",
+                storage
+                    .read("file")
+                    .bufferedReader()
+                    .use { it.readText() },
+            )
+        }
+
+    @Test
+    fun providerListingFailureIsNotAnEmptyFolder() =
+        runBlocking<Unit> {
+            val storage = storage()
+            val engine = SyncEngine()
+            engine.pull(listOf(source("file", "old")), storage, rules)
+            context.contentResolver
+                .call(authority, "rejectQuery", null, null)
+            try {
+                engine.pull(emptyList(), storage, rules)
+                fail("Expected listing failure")
+            } catch (
+                _: IllegalStateException,
+            ) {
+            }
+            context.contentResolver
+                .call(authority, "allowQuery", null, null)
+            assertEquals(
+                "old",
+                storage
+                    .read("file")
+                    .bufferedReader()
+                    .use { it.readText() },
+            )
+        }
+
+    @Test
+    fun appPrivateStorage() =
+        runBlocking<Unit> {
+            val target =
+                InstrumentationRegistry
+                    .getInstrumentation()
+                    .targetContext
+            val storage = AndroidStorage.appFiles(target)
+            SyncEngine().pull(listOf(source("한글/file.txt", "123")), storage, rules)
+            assertEquals(
+                "123",
+                storage
+                    .read("한글/file.txt")
+                    .bufferedReader()
+                    .use { it.readText() },
+            )
+        }
 }
