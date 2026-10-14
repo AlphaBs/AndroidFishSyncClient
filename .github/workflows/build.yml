@@ -21,6 +21,9 @@ jobs:
   android-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      ANDROID_USER_HOME: ${{ runner.temp }}/android-user
+      ANDROID_AVD_HOME: ${{ runner.temp }}/android-avd
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,7 +43,9 @@ jobs:
       - name: Install emulator image
         run: |
           sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
-          echo no | avdmanager create avd --name fishsync-ci --package "system-images;android-35;google_apis;x86_64"
+          mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
+          echo no | avdmanager create avd --name fishsync-ci --package "system-images;android-35;google_apis;x86_64" --path "$ANDROID_AVD_HOME/fishsync-ci.avd"
+          "$ANDROID_HOME/emulator/emulator" -list-avds
       - name: Run SAF instrumented tests
         run: |
           "$ANDROID_HOME/emulator/emulator" -avd fishsync-ci -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > /tmp/emulator.log 2>&1 &
