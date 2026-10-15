@@ -15,6 +15,23 @@ import kotlin.test.*
 
 class StoragePolicyTest {
     @Test
+    fun invalidRulesFailBeforeStorageEnumeration() =
+        runBlocking<Unit> {
+            val storage =
+                object : ReadableSyncStorage {
+                    override val identity = "must-not-enumerate"
+
+                    override fun list(): List<FileEntry> = error("Must not enumerate")
+
+                    override fun read(path: String): java.io.InputStream = error("Must not read")
+                }
+
+            assertFailsWith<IllegalArgumentException> {
+                StorageSyncer(storage).compareFiles(emptyList(), SyncerOptions(emptyList()))
+            }
+        }
+
+    @Test
     fun excludedAndSizeOnlyFilesAreNotOpenedForComparison() =
         runBlocking<Unit> {
             val storage =

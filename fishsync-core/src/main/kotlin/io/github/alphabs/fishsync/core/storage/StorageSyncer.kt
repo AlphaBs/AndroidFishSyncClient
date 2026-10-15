@@ -18,9 +18,11 @@ class StorageSyncer(
     pairSyncer: SyncFilePairSyncer = ParallelSyncFilePairSyncer(),
 ) : SyncFileCollectionSyncer(pairSyncer, PathOptions(caseInsensitive = caseInsensitive)) {
     fun enumerateSyncFiles(): Iterable<SyncFile> =
-        storage
-            .list()
-            .map { StorageLocalFile(storage, it) }
+        sequence {
+            for (entry in storage.list()) {
+                yield(StorageLocalFile(storage, entry))
+            }
+        }.asIterable()
 
     suspend fun compareFiles(
         sources: Iterable<SyncFile>,
