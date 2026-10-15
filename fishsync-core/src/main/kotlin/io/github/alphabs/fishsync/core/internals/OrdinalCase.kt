@@ -2,24 +2,13 @@ package io.github.alphabs.fishsync.core.internals
 
 /** .NET OrdinalIgnoreCase처럼 문화권 및 다중 문자 확장을 적용하지 않는다. */
 internal object OrdinalCase {
-    fun upper(codePoint: Int): Int =
+    private fun upper(codePoint: Int): Int =
         if (codePoint ==
             0x0131
         ) {
             codePoint
         } else {
             Character.toUpperCase(codePoint)
-        }
-
-    fun upper(character: Char): Char = upper(character.code).toChar()
-
-    fun lower(character: Char): Char =
-        if (character ==
-            '\u0130'
-        ) {
-            character
-        } else {
-            character.lowercaseChar()
         }
 
     fun key(value: String): String {

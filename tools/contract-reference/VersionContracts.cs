@@ -10,8 +10,7 @@ internal static class VersionContracts
             "\uFEFFv1\uFEFF", "", "\u00A0", "\u202Fv1\u202F"
         };
         var trimmed = versions.Select(input => new { input, expected = input.Trim() });
-        var versionPath = outputPath;
-        await File.WriteAllTextAsync(versionPath, JsonSerializer.Serialize(trimmed));
+        await File.WriteAllTextAsync(outputPath, JsonSerializer.Serialize(trimmed));
         Console.WriteLine($"Generated {versions.Length} version contracts.");
     }
 }
