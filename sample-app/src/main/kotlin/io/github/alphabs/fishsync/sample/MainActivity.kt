@@ -21,7 +21,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.alphabs.fishsync.android.AndroidStorage
-import io.github.alphabs.fishsync.core.syncer.SyncPlan
+import io.github.alphabs.fishsync.core.storage.SyncPlan
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {

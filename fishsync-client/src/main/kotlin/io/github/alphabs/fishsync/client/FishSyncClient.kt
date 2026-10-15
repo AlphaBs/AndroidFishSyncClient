@@ -1,20 +1,20 @@
 package io.github.alphabs.fishsync.client
 
-import io.github.alphabs.fishsync.core.files.Checksum
-import io.github.alphabs.fishsync.core.files.FileSyncStorage
-import io.github.alphabs.fishsync.core.files.SourceFile
-import io.github.alphabs.fishsync.core.files.SyncStorage
 import io.github.alphabs.fishsync.core.hash
-import io.github.alphabs.fishsync.core.internals.StorageLocks
-import io.github.alphabs.fishsync.core.progress.SyncProgress
 import io.github.alphabs.fishsync.core.relativePath
-import io.github.alphabs.fishsync.core.syncer.ChangedFileException
-import io.github.alphabs.fishsync.core.syncer.LocalSyncer
+import io.github.alphabs.fishsync.core.storage.ChangedFileException
+import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.storage.FileSyncStorage
+import io.github.alphabs.fishsync.core.storage.SourceFile
+import io.github.alphabs.fishsync.core.storage.StorageLocalSyncer
+import io.github.alphabs.fishsync.core.storage.StorageSyncRule
+import io.github.alphabs.fishsync.core.storage.StorageSyncer
+import io.github.alphabs.fishsync.core.storage.SyncPlan
+import io.github.alphabs.fishsync.core.storage.SyncProgress
+import io.github.alphabs.fishsync.core.storage.SyncResult
+import io.github.alphabs.fishsync.core.storage.SyncStorage
+import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.syncer.SyncAction
-import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
-import io.github.alphabs.fishsync.core.syncer.SyncPlan
-import io.github.alphabs.fishsync.core.syncer.SyncResult
-import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -45,8 +45,8 @@ class FishSyncClient(
     serverUrl: String,
     private val tokenProvider: () -> String? = { null },
     http: OkHttpClient = defaultHttpClient(),
-    val collectionSyncer: SyncFileCollectionSyncer =
-        SyncFileCollectionSyncer(caseInsensitive = true),
+    val collectionSyncer: StorageSyncer =
+        StorageSyncer(caseInsensitive = true),
 ) {
     private val base =
         serverUrl
@@ -115,20 +115,20 @@ class FishSyncClient(
     suspend fun comparePull(
         id: String,
         storage: SyncStorage,
-        rules: List<SyncRule> = defaultRules(),
+        rules: List<StorageSyncRule> = defaultRules(),
     ): SyncPlan {
         val sources = sources(files(id))
-        return LocalSyncer(storage, collectionSyncer).compareFiles(sources, rules)
+        return StorageLocalSyncer(storage, collectionSyncer).compareFiles(sources, rules)
     }
 
     suspend fun pull(
         id: String,
         storage: SyncStorage,
-        rules: List<SyncRule> = defaultRules(),
+        rules: List<StorageSyncRule> = defaultRules(),
         expectedPlan: SyncPlan? = null,
     ): SyncResult {
         val sources = sources(files(id))
-        return LocalSyncer(storage, collectionSyncer).compareAndSyncFiles(
+        return StorageLocalSyncer(storage, collectionSyncer).compareAndSyncFiles(
             sources,
             rules,
             expectedPlan = expectedPlan,
@@ -490,7 +490,7 @@ class FishSyncClient(
     }
 
     companion object {
-        fun defaultRules() = listOf(SyncRule(SyncAction.FullSync))
+        fun defaultRules() = listOf(StorageSyncRule(SyncAction.FullSync))
     }
 }
 

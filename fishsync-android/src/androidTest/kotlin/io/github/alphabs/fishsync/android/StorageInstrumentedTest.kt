@@ -3,13 +3,13 @@ package io.github.alphabs.fishsync.android
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.alphabs.fishsync.core.files.Checksum
-import io.github.alphabs.fishsync.core.files.SourceFile
 import io.github.alphabs.fishsync.core.hash
+import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.storage.SourceFile
+import io.github.alphabs.fishsync.core.storage.StorageSyncRule
+import io.github.alphabs.fishsync.core.storage.StorageSyncer
+import io.github.alphabs.fishsync.core.storage.SyncFailure
 import io.github.alphabs.fishsync.core.syncer.SyncAction
-import io.github.alphabs.fishsync.core.syncer.SyncFailure
-import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
-import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -30,7 +30,7 @@ class StorageInstrumentedTest {
             Uri.parse("content://io.github.alphabs.fishsync.test.documents/tree/root"),
         )
 
-    private val rules = listOf(SyncRule(SyncAction.FullSync))
+    private val rules = listOf(StorageSyncRule(SyncAction.FullSync))
 
     private fun source(
         path: String,
@@ -62,7 +62,7 @@ class StorageInstrumentedTest {
     fun safCreateReplaceAndDelete() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = SyncFileCollectionSyncer()
+            val collectionSyncer = StorageSyncer()
             collectionSyncer.compareAndSyncFiles(
                 listOf(source("a/file.txt", "123"), source("extra.txt", "extra")),
                 storage,
@@ -92,7 +92,7 @@ class StorageInstrumentedTest {
     fun safCorruptTransferPreservesOriginalAndSkipsDelete() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = SyncFileCollectionSyncer()
+            val collectionSyncer = StorageSyncer()
             collectionSyncer.compareAndSyncFiles(
                 listOf(source("file", "old"), source("extra", "keep")),
                 storage,
@@ -128,7 +128,7 @@ class StorageInstrumentedTest {
     fun providerRenameFailurePreservesOriginal() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = SyncFileCollectionSyncer()
+            val collectionSyncer = StorageSyncer()
             collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
             context.contentResolver
                 .call(authority, "rejectRename", null, null)
@@ -156,7 +156,7 @@ class StorageInstrumentedTest {
     fun providerListingFailureIsNotAnEmptyFolder() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = SyncFileCollectionSyncer()
+            val collectionSyncer = StorageSyncer()
             collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
             context.contentResolver
                 .call(authority, "rejectQuery", null, null)
@@ -186,7 +186,7 @@ class StorageInstrumentedTest {
                     .getInstrumentation()
                     .targetContext
             val storage = AndroidStorage.appFiles(target)
-            SyncFileCollectionSyncer().compareAndSyncFiles(
+            StorageSyncer().compareAndSyncFiles(
                 listOf(source("한글/file.txt", "123")),
                 storage,
                 rules,

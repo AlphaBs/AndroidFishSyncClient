@@ -1,18 +1,18 @@
 package io.github.alphabs.fishsync.core
 
-import io.github.alphabs.fishsync.core.files.Checksum
-import io.github.alphabs.fishsync.core.files.FileSyncStorage
-import io.github.alphabs.fishsync.core.files.SourceFile
-import io.github.alphabs.fishsync.core.syncer.Comparison
-import io.github.alphabs.fishsync.core.syncer.IntegrityException
+import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.storage.Comparison
+import io.github.alphabs.fishsync.core.storage.FileSyncStorage
+import io.github.alphabs.fishsync.core.storage.IntegrityException
+import io.github.alphabs.fishsync.core.storage.SourceFile
+import io.github.alphabs.fishsync.core.storage.StorageSyncRule
+import io.github.alphabs.fishsync.core.storage.StorageSyncer
+import io.github.alphabs.fishsync.core.storage.SyncFailure
+import io.github.alphabs.fishsync.core.storage.versions.VersionState
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
-import io.github.alphabs.fishsync.core.syncer.SyncFailure
-import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
-import io.github.alphabs.fishsync.core.syncer.SyncRule
 import io.github.alphabs.fishsync.core.syncer.glob
-import io.github.alphabs.fishsync.core.versions.VersionState
 import kotlinx.coroutines.*
 import java.io.File
 import java.nio.file.Files
@@ -39,7 +39,7 @@ class CoreTest {
         text.byteInputStream()
     }
 
-    private val full = listOf(SyncRule(SyncAction.FullSync))
+    private val full = listOf(StorageSyncRule(SyncAction.FullSync))
 
     @Test
     fun checksumContract() =
@@ -101,12 +101,12 @@ class CoreTest {
                 File(dir, "delete.txt").writeText("old")
                 val rules =
                     listOf(
-                        SyncRule(SyncAction.Exclude, "keep.*", SyncCondition.OnNewVersion),
-                        SyncRule(SyncAction.InstallOnly, "keep.*"),
-                        SyncRule(SyncAction.FullSync),
+                        StorageSyncRule(SyncAction.Exclude, "keep.*", SyncCondition.OnNewVersion),
+                        StorageSyncRule(SyncAction.InstallOnly, "keep.*"),
+                        StorageSyncRule(SyncAction.FullSync),
                     )
                 val sources = listOf(source("keep.txt", "new"), source("add.txt", "new"))
-                val plan = SyncFileCollectionSyncer().compareFiles(sources, storage, rules)
+                val plan = StorageSyncer().compareFiles(sources, storage, rules)
                 assertEquals(listOf("add.txt"), plan.added)
                 assertTrue(
                     plan.identical
@@ -114,7 +114,7 @@ class CoreTest {
                 )
                 assertEquals(listOf("delete.txt"), plan.deleted)
                 assertTrue(
-                    SyncFileCollectionSyncer()
+                    StorageSyncer()
                         .compareFiles(
                             sources,
                             storage,
@@ -135,10 +135,10 @@ class CoreTest {
             try {
                 File(dir, "local.txt").writeText("keep")
                 val result =
-                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                    StorageSyncer().compareAndSyncFiles(
                         listOf(source("new.txt", "new")),
                         FileSyncStorage(dir),
-                        listOf(SyncRule(SyncAction.UpdateOnly)),
+                        listOf(StorageSyncRule(SyncAction.UpdateOnly)),
                     )
                 assertTrue(
                     result.deleted
@@ -156,10 +156,10 @@ class CoreTest {
             val dir = root()
             try {
                 assertFails {
-                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                    StorageSyncer().compareAndSyncFiles(
                         listOf(source("x", "x")),
                         FileSyncStorage(dir),
-                        listOf(SyncRule(SyncAction.FullSync, "other")),
+                        listOf(StorageSyncRule(SyncAction.FullSync, "other")),
                     )
                 }
                 assertTrue(
@@ -181,7 +181,7 @@ class CoreTest {
                 File(dir, "extra.txt").writeText("preserve")
                 val failure =
                     assertFailsWith<SyncFailure> {
-                        SyncFileCollectionSyncer().compareAndSyncFiles(
+                        StorageSyncer().compareAndSyncFiles(
                             listOf(source("target.txt", "bad", Checksum("md5", "0".repeat(32)))),
                             FileSyncStorage(dir),
                             full,
@@ -208,10 +208,10 @@ class CoreTest {
                 val source =
                     SourceFile("target", 99, null) { throw CancellationException("cancel") }
                 assertFailsWith<CancellationException> {
-                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                    StorageSyncer().compareAndSyncFiles(
                         listOf(source),
                         FileSyncStorage(dir),
-                        listOf(SyncRule(SyncAction.FullSync, comparison = Comparison.Size)),
+                        listOf(StorageSyncRule(SyncAction.FullSync, comparison = Comparison.Size)),
                     )
                 }
                 assertEquals("original", File(dir, "target").readText())
@@ -229,7 +229,7 @@ class CoreTest {
                 val source =
                     source("a/b.txt", "123", Checksum("md5", "202CB962AC59075B964B07152D234B70"))
                 val result =
-                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                    StorageSyncer().compareAndSyncFiles(
                         listOf(source),
                         FileSyncStorage(dir),
                         full,
@@ -249,10 +249,12 @@ class CoreTest {
             try {
                 File(dir, "file").writeText("existing")
                 val plan =
-                    SyncFileCollectionSyncer().compareFiles(
+                    StorageSyncer().compareFiles(
                         listOf(source("file", "x")),
                         FileSyncStorage(dir),
-                        listOf(SyncRule(SyncAction.FullSync, comparison = Comparison.Checksum)),
+                        listOf(
+                            StorageSyncRule(SyncAction.FullSync, comparison = Comparison.Checksum),
+                        ),
                     )
                 assertEquals(listOf("file"), plan.identical)
             } finally {
@@ -267,7 +269,7 @@ class CoreTest {
             val outside = root()
             try {
                 assertFails {
-                    SyncFileCollectionSyncer(
+                    StorageSyncer(
                         caseInsensitive = true,
                     ).compareFiles(
                         listOf(source("A", "x"), source("a", "y")),
@@ -295,10 +297,10 @@ class CoreTest {
                     listOf(
                         source("file", "123", Checksum("md5", "202cb962ac59075b964b07152d234b70")),
                     )
-                val preview = SyncFileCollectionSyncer().compareFiles(sources, storage, full)
+                val preview = StorageSyncer().compareFiles(sources, storage, full)
                 File(dir, "file").writeText("new")
                 assertFailsWith<IllegalArgumentException> {
-                    SyncFileCollectionSyncer().compareAndSyncFiles(
+                    StorageSyncer().compareAndSyncFiles(
                         sources,
                         storage,
                         full,

@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.client
 
-import io.github.alphabs.fishsync.core.files.FileSyncStorage
+import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout

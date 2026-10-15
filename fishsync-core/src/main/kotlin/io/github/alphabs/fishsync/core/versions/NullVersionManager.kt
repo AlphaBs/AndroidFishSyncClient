@@ -1,10 +1,9 @@
 package io.github.alphabs.fishsync.core.versions
 
-/** 버전을 저장하지 않고 원본처럼 항상 새 버전으로 취급한다. */
-class NullVersionManager : VersionManager {
-    override fun current(): String? = null
+class NullVersionManager : IVersionManager {
+    override suspend fun checkNewVersion(sourceVersion: String?): Boolean = true
 
-    override fun isNew(version: String?): Boolean = true
+    override suspend fun getCurrentVersion(): String? = null
 
-    override fun update(version: String) = Unit
+    override suspend fun updateVersion(newVersion: String) = Unit
 }

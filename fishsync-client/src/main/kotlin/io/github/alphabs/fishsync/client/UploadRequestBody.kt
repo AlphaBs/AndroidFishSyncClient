@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.client
 
-import io.github.alphabs.fishsync.core.progress.SyncProgress
+import io.github.alphabs.fishsync.core.storage.SyncProgress
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okio.BufferedSink

@@ -1,19 +1,10 @@
 package io.github.alphabs.fishsync.core.syncer
 
-enum class SyncAction { FullSync, UpdateOnly, InstallOnly, Exclude }
-
-enum class SyncCondition { Always, OnNewVersion }
-
-enum class Comparison { Size, Checksum, SizeAndChecksum }
-
-data class SyncContext(
-    val isNewVersion: Boolean = false,
-    val isForced: Boolean = false,
-)
+import io.github.alphabs.fishsync.core.filecomparers.IFileComparer
 
 data class SyncRule(
     val action: SyncAction,
-    val pattern: String = "**",
-    val condition: SyncCondition = SyncCondition.Always,
-    val comparison: Comparison = Comparison.Checksum,
+    val condition: SyncCondition,
+    val pattern: String,
+    val comparer: IFileComparer?,
 )

@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ANDROID_USER_HOME: ${{ runner.temp }}/android-user
-      ANDROID_AVD_HOME: ${{ runner.temp }}/android-avd
+      ANDROID_USER_HOME: ${{ github.workspace }}/.ci-android/user
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.ci-android/avd
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

@@ -1,29 +1,47 @@
 package io.github.alphabs.fishsync.core.syncer
 
+import io.github.alphabs.fishsync.core.PathHelper
+import io.github.alphabs.fishsync.core.PathOptions
+
 internal class SyncRuleEvaluator(
-    rules: List<SyncRule>,
-    private val context: SyncContext,
-    caseInsensitive: Boolean,
+    options: SyncerOptions,
+    private val pathOptions: PathOptions,
 ) {
+    private val context = requireNotNull(options.context) { "Context cannot be null" }
     private val compiled: List<Pair<SyncRule, Regex>>
 
     init {
-        require(rules.isNotEmpty()) { "Explicit rules are required" }
-        compiled = rules.map { rule -> rule to glob(rule.pattern, caseInsensitive) }
-    }
-
-    fun forPath(path: String): SyncRule {
-        for ((rule, pattern) in compiled) {
-            if (isEnabled(rule) && pattern.matches(path)) {
-                return rule
+        val rules = requireNotNull(options.rules) { "Rules must be specified" }
+        require(rules.isNotEmpty()) { "Rules must not be empty" }
+        compiled =
+            rules.map { rule ->
+                require(
+                    rule.action == SyncAction.Exclude || rule.comparer != null,
+                ) { "Comparer is required" }
+                val pattern =
+                    PathHelper
+                        .normalizePath(
+                            rule.pattern,
+                            pathOptions,
+                        ).replace(pathOptions.pathSeparator, '/')
+                rule to glob(pattern, pathOptions.caseInsensitive)
             }
-        }
-
-        error("No matching rule for $path")
     }
 
-    private fun isEnabled(rule: SyncRule): Boolean =
-        rule.condition == SyncCondition.Always || context.isNewVersion || context.isForced
+    fun evaluate(path: String): SyncRule {
+        val normalized =
+            PathHelper
+                .normalizePath(
+                    path,
+                    pathOptions,
+                ).replace(pathOptions.pathSeparator, '/')
+        for ((rule, pattern) in compiled) {
+            val enabled =
+                rule.condition == SyncCondition.Always || context.isNewVersion || context.isForced
+            if (enabled && pattern.matches(normalized)) return rule
+        }
+        throw IllegalArgumentException("No matching rule for $path")
+    }
 }
 
 internal fun glob(

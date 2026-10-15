@@ -1,32 +1,67 @@
 package io.github.alphabs.fishsync.core.syncer
 
-import io.github.alphabs.fishsync.core.files.SourceFile
-import io.github.alphabs.fishsync.core.files.WritableSyncStorage
+import io.github.alphabs.fishsync.core.PathHelper
+import io.github.alphabs.fishsync.core.PathOptions
+import io.github.alphabs.fishsync.core.RootedPath
+import io.github.alphabs.fishsync.core.files.LocalSyncFile
+import io.github.alphabs.fishsync.core.files.SyncFile
+import io.github.alphabs.fishsync.core.files.SyncFilePair
+import io.github.alphabs.fishsync.core.internals.LocalPathGuard
+import java.io.File
+import java.nio.file.Files
 
-/** 일반 파일 또는 SAF 대상을 고정하고 컬렉션 동기화기에 연결한다. */
 class LocalSyncer(
-    private val storage: WritableSyncStorage,
-    private val collectionSyncer: SyncFileCollectionSyncer = SyncFileCollectionSyncer(),
-) {
-    val progress get() = collectionSyncer.progress
+    root: String,
+    private val pathOptions: PathOptions,
+    filePairSyncer: ISyncFilePairSyncer,
+) : SyncFileCollectionSyncer(filePairSyncer, pathOptions) {
+    private val root = PathHelper.normalizeRoot(root, pathOptions)
+
+    init {
+        LocalPathGuard.ensureNoLinks(this.root)
+    }
 
     suspend fun compareFiles(
-        sources: List<SourceFile>,
-        rules: List<SyncRule>,
-        context: SyncContext = SyncContext(),
-    ): SyncPlan = collectionSyncer.compareFiles(sources, storage, rules, context)
+        sources: Iterable<SyncFile>,
+        options: SyncerOptions?,
+    ): SyncFileCollectionComparerResult =
+        compareFiles(sources, enumerateLocalSyncFiles(root, pathOptions), options)
 
     suspend fun compareAndSyncFiles(
-        sources: List<SourceFile>,
-        rules: List<SyncRule>,
-        context: SyncContext = SyncContext(),
-        expectedPlan: SyncPlan? = null,
-    ): SyncResult =
-        collectionSyncer.compareAndSyncFiles(
-            sources,
-            storage,
-            rules,
-            context,
-            expectedPlan,
-        )
+        sources: Iterable<SyncFile>,
+        options: SyncerOptions?,
+    ): SyncFileCollectionComparerResult =
+        compareAndSyncFiles(sources, enumerateLocalSyncFiles(root, pathOptions), options)
+
+    override fun createFilePairs(sources: Iterable<SyncFile>): List<SyncFilePair> =
+        sources.map {
+            SyncFilePair(
+                it,
+                LocalSyncFile(
+                    it.path
+                        .withRoot(root),
+                ),
+            )
+        }
+
+    fun deleteLocalFiles(files: Iterable<SyncFile>) {
+        for (file in files) {
+            require(file.path.root == root) { "Root not matched" }
+            val path =
+                file.path
+                    .getFullPath()
+            LocalPathGuard.ensureNoLinks(path)
+            Files.delete(File(path).toPath())
+        }
+    }
+
+    companion object {
+        fun enumerateLocalSyncFiles(
+            root: String,
+            options: PathOptions,
+        ): List<SyncFile> =
+            RootedPath
+                .fromDirectory(root, options)
+                .map { LocalSyncFile(it) }
+    }
 }

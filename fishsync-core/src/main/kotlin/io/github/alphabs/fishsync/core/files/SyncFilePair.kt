@@ -1,7 +1,17 @@
 package io.github.alphabs.fishsync.core.files
 
-/** 새 파일이면 target은 적용할 경로와 알 수 없는 크기를 가진다. */
+import io.github.alphabs.fishsync.core.progress.SyncFileByteProgress
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+
 data class SyncFilePair(
-    val source: SourceFile,
-    val target: FileEntry,
-)
+    val source: SyncFile,
+    val target: SyncFile,
+) {
+    suspend fun syncContent(progress: ((SyncFileByteProgress) -> Unit)? = null) {
+        currentCoroutineContext().ensureActive()
+        target.openWriteStream().use { output ->
+            source.copyTo(output) { progress?.invoke(SyncFileByteProgress(source, it)) }
+        }
+    }
+}
