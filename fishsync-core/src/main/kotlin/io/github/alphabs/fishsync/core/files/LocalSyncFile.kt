@@ -16,7 +16,8 @@ import java.nio.file.Files
 
 open class LocalSyncFile(
     path: RootedPath,
-) : SyncFile(path) {
+    metadata: SyncFileMetadata? = null,
+) : SyncFile(path, metadata) {
     open val exists: Boolean get() {
         LocalPathGuard.ensureNoLinks(path.getFullPath())
         return File(path.getFullPath()).isFile

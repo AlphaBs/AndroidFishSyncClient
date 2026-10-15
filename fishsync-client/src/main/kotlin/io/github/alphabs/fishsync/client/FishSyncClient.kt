@@ -231,13 +231,12 @@ class FishSyncClient(
                 ReadableHttpSyncFile(
                     RootedPath.fromSubPath(file.path, PathOptions()),
                     downloadHttp,
+                    SyncFileMetadata(
+                        file.metadata.size,
+                        SyncFileChecksum("md5", file.metadata.checksum),
+                    ),
                 )
             remote.location = file.location
-            remote.metadata =
-                SyncFileMetadata(
-                    file.metadata.size,
-                    SyncFileChecksum("md5", file.metadata.checksum),
-                )
             SourceFile(
                 path = file.path,
                 size = file.metadata.size,

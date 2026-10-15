@@ -25,7 +25,8 @@ import kotlin.coroutines.resumeWithException
 class ReadableHttpSyncFile(
     path: RootedPath,
     private val httpClient: OkHttpClient,
-) : SyncFile(path) {
+    metadata: SyncFileMetadata? = null,
+) : SyncFile(path, metadata) {
     var uploaded: Instant = Instant.parse("0001-01-01T00:00:00Z")
     var location: String? = null
     override val isReadable = true

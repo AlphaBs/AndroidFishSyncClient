@@ -54,10 +54,10 @@ class OriginalCoreContractTest {
     @Test
     fun metadataComparersKeepErrorPoliciesAndValidateChecksums() =
         runBlocking<Unit> {
-            val source = virtual("file", 3)
-            val target = virtual("file", 3)
+            var source = virtual("file", 3)
+            var target = virtual("file", 3)
             assertTrue(FileSizeMetadataComparer().areEqual(SyncFilePair(source, target)))
-            target.metadata = null
+            target = VirtualSyncFile(target.path)
             assertFailsWith<FileComparerException> {
                 FileSizeMetadataComparer().areEqual(SyncFilePair(source, target))
             }
@@ -67,7 +67,11 @@ class OriginalCoreContractTest {
                 ).areEqual(SyncFilePair(source, target)),
             )
             assertTrue(FileChecksumMetadataComparer().areEqual(SyncFilePair(source, target)))
-            source.metadata = SyncFileMetadata(3, SyncFileChecksum("md5", "invalid"))
+            source =
+                VirtualSyncFile(
+                    source.path,
+                    SyncFileMetadata(3, SyncFileChecksum("md5", "invalid")),
+                )
             assertFailsWith<FileComparerException> {
                 FileChecksumMetadataComparer(
                     ComparerErrorHandlingModes.ReturnEqual,
@@ -143,7 +147,13 @@ class OriginalCoreContractTest {
             try {
                 File(directory, "extra").writeText("keep until deleted")
                 val source =
-                    object : SyncFile(RootedPath.fromSubPath("file", paths)) {
+                    object : SyncFile(
+                        RootedPath.fromSubPath("file", paths),
+                        SyncFileMetadata(
+                            3,
+                            SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
+                        ),
+                    ) {
                         override val isReadable = true
                         override val isWritable = false
 
@@ -162,8 +172,6 @@ class OriginalCoreContractTest {
                             progress?.invoke(ByteProgress(0, 3))
                         }
                     }
-                source.metadata =
-                    SyncFileMetadata(3, SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"))
                 val syncer = LocalSyncer(directory.path, paths, ParallelSyncFilePairSyncer())
                 val result =
                     syncer.compareAndSyncFiles(
@@ -268,8 +276,5 @@ class OriginalCoreContractTest {
     private fun virtual(
         path: String,
         size: Long,
-    ): SyncFile =
-        VirtualSyncFile(RootedPath.fromSubPath(path, paths)).apply {
-            metadata = SyncFileMetadata(size)
-        }
+    ): SyncFile = VirtualSyncFile(RootedPath.fromSubPath(path, paths), SyncFileMetadata(size))
 }

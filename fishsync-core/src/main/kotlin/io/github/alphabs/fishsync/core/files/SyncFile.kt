@@ -7,9 +7,8 @@ import java.io.OutputStream
 
 abstract class SyncFile(
     val path: RootedPath,
+    val metadata: SyncFileMetadata? = null,
 ) {
-    var metadata: SyncFileMetadata? = null
-
     abstract val isReadable: Boolean
     abstract val isWritable: Boolean
 

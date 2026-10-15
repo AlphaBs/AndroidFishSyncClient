@@ -7,7 +7,8 @@ import java.io.OutputStream
 
 class VirtualSyncFile(
     path: RootedPath,
-) : SyncFile(path) {
+    metadata: SyncFileMetadata? = null,
+) : SyncFile(path, metadata) {
     override val isReadable = false
     override val isWritable = false
 

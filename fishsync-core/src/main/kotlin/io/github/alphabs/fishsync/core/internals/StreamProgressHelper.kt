@@ -1,5 +1,6 @@
 package io.github.alphabs.fishsync.core.internals
 
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -43,17 +44,8 @@ internal object StreamProgressHelper {
                     position.addAndGet(it)
                 }
             }
-        var previous = 0L
         try {
-            while (!copy.isCompleted) {
-                val current = position.get()
-                progress(current - previous)
-                previous = current
-                withTimeoutOrNull(interval) { copy.await() }
-            }
-            copy.await()
-            val remaining = position.get() - previous
-            if (remaining != 0L) progress(remaining)
+            monitorStreamPosition(copy, { position.get() }, 0, interval, progress)
         } catch (failure: Throwable) {
             try {
                 copy.await()
@@ -62,6 +54,25 @@ internal object StreamProgressHelper {
             }
             throw failure
         }
+    }
+
+    suspend fun monitorStreamPosition(
+        task: Deferred<Unit>,
+        position: () -> Long,
+        initialPosition: Long,
+        interval: Long,
+        delta: (Long) -> Unit,
+    ) {
+        var previous = initialPosition
+        while (!task.isCompleted) {
+            val current = position()
+            delta(current - previous)
+            previous = current
+            withTimeoutOrNull(interval) { task.await() }
+        }
+        task.await()
+        val remaining = position() - previous
+        if (remaining != 0L) delta(remaining)
     }
 
     fun getBufferSize(size: Long): Int =

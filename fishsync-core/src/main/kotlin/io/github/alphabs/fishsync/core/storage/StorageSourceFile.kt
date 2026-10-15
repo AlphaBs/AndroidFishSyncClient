@@ -12,16 +12,15 @@ import java.io.OutputStream
 
 internal class StorageSourceFile(
     private val source: SourceFile,
-) : SyncFile(RootedPath.fromSubPath(source.path, PathOptions())) {
-    init {
-        metadata =
-            SyncFileMetadata(
-                source.size ?: -1,
-                source.checksum
-                    ?.let { SyncFileChecksum(it.algorithm, it.hex) },
-            )
-    }
-
+) : SyncFile(
+        RootedPath.fromSubPath(source.path, PathOptions()),
+        SyncFileMetadata(
+            source.size ?: -1,
+            source.checksum?.let {
+                SyncFileChecksum(it.algorithm, it.hex)
+            },
+        ),
+    ) {
     override val isReadable = true
     override val isWritable = false
 

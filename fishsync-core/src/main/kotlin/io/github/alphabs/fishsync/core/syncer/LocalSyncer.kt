@@ -34,15 +34,17 @@ class LocalSyncer(
         compareAndSyncFiles(sources, enumerateLocalSyncFiles(root, pathOptions), options)
 
     override fun createFilePairs(sources: Iterable<SyncFile>): Iterable<SyncFilePair> =
-        sources.map {
-            SyncFilePair(
-                it,
-                LocalSyncFile(
-                    it.path
-                        .withRoot(root),
-                ),
-            )
-        }
+        sources
+            .asSequence()
+            .map {
+                SyncFilePair(
+                    it,
+                    LocalSyncFile(
+                        it.path
+                            .withRoot(root),
+                    ),
+                )
+            }.asIterable()
 
     fun deleteLocalFiles(files: Iterable<SyncFile>) {
         for (file in files) {
@@ -61,7 +63,7 @@ class LocalSyncer(
         fun enumerateLocalSyncFiles(
             root: String,
             options: PathOptions,
-        ): List<SyncFile> =
+        ): Iterable<SyncFile> =
             RootedPath
                 .fromDirectory(root, options)
                 .map { LocalSyncFile(it) }

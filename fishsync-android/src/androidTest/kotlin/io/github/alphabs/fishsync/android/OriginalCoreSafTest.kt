@@ -34,13 +34,27 @@ class OriginalCoreSafTest {
     fun reset() {
         context.contentResolver
             .call(authority, "resetFixture", null, null)
+        context.contentResolver.call(
+            authority,
+            "grantFixture",
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext.packageName,
+            null,
+        )
     }
 
     @Test
     fun safFilesUseOriginalComparerAndKeepUrisOutOfFilesystemPaths() =
         runBlocking<Unit> {
             val source =
-                object : SyncFile(RootedPath.fromSubPath("folder/한글.txt", PathOptions())) {
+                object : SyncFile(
+                    RootedPath.fromSubPath("folder/한글.txt", PathOptions()),
+                    SyncFileMetadata(
+                        3,
+                        SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
+                    ),
+                ) {
                     override val isReadable = true
                     override val isWritable = false
 
@@ -58,8 +72,6 @@ class OriginalCoreSafTest {
                         progress?.invoke(ByteProgress(0, 3))
                     }
                 }
-            source.metadata =
-                SyncFileMetadata(3, SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"))
             val options =
                 SyncerOptions(
                     listOf(
