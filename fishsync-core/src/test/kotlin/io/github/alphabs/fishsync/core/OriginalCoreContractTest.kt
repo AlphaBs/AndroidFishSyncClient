@@ -270,6 +270,33 @@ class OriginalCoreContractTest {
             }
         }
 
+    @Test
+    fun directorySuffixNeverTurnsIntoARegularFileWrite() =
+        runBlocking<Unit> {
+            val directory =
+                Files
+                    .createTempDirectory("directory-suffix-")
+                    .toFile()
+            try {
+                val file = File(directory, "file")
+                file.writeText("preserve")
+                val target = LocalSyncFile(RootedPath.create(directory.path, "file/", paths))
+                assertFalse(target.exists)
+                assertFailsWith<java.io.IOException> { target.openWriteStream() }
+                assertEquals("preserve", file.readText())
+            } finally {
+                directory.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun unixDeviceExistsAsAFileLikeDotnet() {
+        val device = File("/dev/null")
+        if (!device.exists()) return
+        val target = LocalSyncFile(RootedPath.fromFullPath("/dev", device.path, paths))
+        assertTrue(target.exists)
+    }
+
     private fun fullRule() =
         SyncRule(SyncAction.FullSync, SyncCondition.Always, "**", LocalFileChecksumComparer())
 

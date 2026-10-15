@@ -4,12 +4,14 @@ import io.github.alphabs.fishsync.core.PathHelper
 import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.internals.LocalPathGuard
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
+import io.github.alphabs.fishsync.core.internals.endsInNativeDirectorySeparator
 import io.github.alphabs.fishsync.core.progress.ByteProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.file.Files
@@ -19,19 +21,30 @@ open class LocalSyncFile(
     metadata: SyncFileMetadata? = null,
 ) : SyncFile(path, metadata) {
     open val exists: Boolean get() {
-        LocalPathGuard.ensureNoLinks(path.getFullPath())
-        return File(path.getFullPath()).isFile
+        val fullPath = path.getFullPath()
+        LocalPathGuard.ensureNoLinks(fullPath)
+        if (endsInNativeDirectorySeparator(fullPath)) return false
+        val local = File(fullPath).toPath()
+        return Files.exists(local) && !Files.isDirectory(local)
     }
 
-    open val length: Long get() = Files.size(File(path.getFullPath()).toPath())
+    open val length: Long get() {
+        val fullPath = path.getFullPath()
+        if (endsInNativeDirectorySeparator(fullPath)) throw IOException("Not a file: $fullPath")
+        val local = File(fullPath).toPath()
+        if (Files.isDirectory(local)) throw IOException("Not a file: $fullPath")
+        return Files.size(local)
+    }
     override val isReadable get() = path.isRooted
     override val isWritable get() = path.isRooted
 
     override suspend fun openReadStream(): InputStream =
         withContext(Dispatchers.IO) {
             currentCoroutineContext().ensureActive()
-            LocalPathGuard.ensureNoLinks(path.getFullPath())
-            File(path.getFullPath()).inputStream()
+            val fullPath = path.getFullPath()
+            LocalPathGuard.ensureNoLinks(fullPath)
+            if (endsInNativeDirectorySeparator(fullPath)) throw IOException("Not a file: $fullPath")
+            File(fullPath).inputStream()
         }
 
     override suspend fun openWriteStream(): OutputStream =
@@ -41,6 +54,7 @@ open class LocalSyncFile(
             LocalPathGuard.ensureNoLinks(fullPath)
             PathHelper.createParentDirectory(fullPath)
             LocalPathGuard.ensureNoLinks(fullPath)
+            if (endsInNativeDirectorySeparator(fullPath)) throw IOException("Not a file: $fullPath")
             File(fullPath).outputStream()
         }
 

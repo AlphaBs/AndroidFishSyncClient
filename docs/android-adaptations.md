@@ -21,7 +21,7 @@
 - Android 앱 전용 폴더: `AndroidStorage.appLocalSyncer(context)`.
 - 사용자가 선택한 SAF 폴더: `SafSyncer(context, treeUri)`와 `SafSyncFile`.
 
-SafSyncFile의 path는 root 없는 RootedPath다. 같은 파일의 treeUri는 별도 프로퍼티로 유지한다. 이 파일은 로컬 파일 스트림·존재·크기 계약을 구현하므로 원본 LocalFileChecksumComparer와 LocalFileSizeComparer를 그대로 사용할 수 있다. 제공자에서 크기를 알 수 없을 때의 실패는 별도로 처리한다.
+SafSyncFile의 path는 root 없는 RootedPath다. 같은 파일의 treeUri는 별도 프로퍼티로 유지한다. 원본의 File.Exists·FileInfo.Length는 LocalSyncFile의 재정의 가능한 존재·크기 경계로 옮겼고 일반 파일에서는 같은 결과를 유지한다. 이 파일은 로컬 파일 스트림·존재·크기 계약을 구현하므로 원본 LocalFileChecksumComparer와 LocalFileSizeComparer를 그대로 사용할 수 있다. 제공자에서 크기를 알 수 없을 때의 실패는 별도로 처리한다.
 
 ## Android 필수 차이와 앱의 추가 정책 구분
 
@@ -29,6 +29,6 @@ SafSyncFile의 path는 root 없는 RootedPath다. 같은 파일의 treeUri는 �
 
 기존 FishSyncClient·샘플 앱이 제공하는 임시 파일 검증 후 적용, 원본 백업 복구, 미리보기 fingerprint, 적용 후 삭제, 같은 루트 잠금, 부분 적용 결과와 전송 스냅샷은 storage 확장 정책이다. 이 기능들이 전부 Android 때문에 필수인 것은 아니다. 원본 core의 동작을 바꾸는 대신 별도 계층에서 제공한다.
 
-SafSyncFile은 제공자에 안전하게 문서를 적용하기 위해 PendingWrite를 사용한다. 전송 후 비교기 검증보다 먼저 스트림 닫기에서 적용한다는 점은 원본의 직접 쓰기 계약과 같다. 체크섬 실패 전 원본 파일까지 보호하려면 샘플 앱이 사용하는 StorageSyncer·SafSyncStorage 경로를 사용한다.
+SafSyncFile은 제공자의 문서 생성·직접 쓰기 스트림을 사용한다. 백업이나 내부 파일 이름 예약 정책을 적용하지 않으며 원본처럼 전송 후 비교기로 검증한다. 스트림 열기에는 CancellationSignal을 연결한다. 체크섬 실패 전 원본 파일까지 보호하려면 샘플 앱이 사용하는 StorageSyncer·SafSyncStorage 경로를 사용한다.
 
 SAF의 `.fishsync-*` 임시·백업 이름 예약, 복구 정책과 프로세스 종료 후 잔여 문서 관리 역시 storage 확장 정책이다. 권한 조회 실패를 빈 폴더로 처리하지 않는다.

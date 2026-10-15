@@ -1,6 +1,7 @@
 package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.internals.OrdinalCase
+import io.github.alphabs.fishsync.core.internals.endsInNativeDirectorySeparator
 import java.io.File
 import java.nio.file.Files
 
@@ -93,8 +94,14 @@ object PathHelper {
             )
 
     fun createParentDirectory(path: String) {
-        File(path)
-            .parentFile
-            ?.mkdirs()
+        val file = File(path)
+        val nativePath = file.toPath()
+        val parent =
+            if (endsInNativeDirectorySeparator(path) && nativePath != nativePath.root) {
+                file
+            } else {
+                file.parentFile
+            }
+        if (parent != null) Files.createDirectories(parent.toPath())
     }
 }

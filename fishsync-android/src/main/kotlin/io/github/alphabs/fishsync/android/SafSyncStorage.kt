@@ -98,7 +98,7 @@ class SafSyncStorage(
         create: Boolean,
     ): Pair<DocumentFile, String> {
         val parts = pieces(path)
-        require(root.isDirectory && root.canRead()) { "Folder permission is unavailable" }
+        require(root.isDirectory) { "Not a document directory" }
         var current = root
         for (name in parts.dropLast(1)) {
             val found =
@@ -124,7 +124,7 @@ class SafSyncStorage(
     }
 
     override fun list(): List<FileEntry> {
-        require(root.isDirectory && root.canRead()) { "Folder permission is unavailable" }
+        require(root.isDirectory) { "Not a document directory" }
         val result = mutableListOf<FileEntry>()
         val visited = hashSetOf<String>()
 
@@ -201,7 +201,7 @@ class SafSyncStorage(
 
     override fun prepare(path: String): PendingWrite {
         val (parent, name) = findParent(path, true)
-        require(parent.canWrite()) { "Folder is not writable" }
+        // 실제 생성·열기 요청에서 제공자가 쓰기 권한을 검사한다.
         val existing = child(parent, name)
         require(existing == null || existing.isFile && supportsRename(existing)) {
             "Provider cannot safely replace this file"

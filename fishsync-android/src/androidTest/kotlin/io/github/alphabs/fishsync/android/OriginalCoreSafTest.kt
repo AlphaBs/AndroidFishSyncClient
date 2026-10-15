@@ -125,6 +125,36 @@ class OriginalCoreSafTest {
             }
         }
 
+    @Test
+    fun originalSafAdapterDoesNotApplyAppReservedNamePolicies() =
+        runBlocking<Unit> {
+            val syncer = SafSyncer(context, tree)
+            val sources = listOf(textSource(".fishsync-user.txt"), textSource("world:one.txt"))
+            val options =
+                SyncerOptions(
+                    listOf(
+                        SyncRule(
+                            SyncAction.FullSync,
+                            SyncCondition.Always,
+                            "**",
+                            LocalFileChecksumComparer(),
+                        ),
+                    ),
+                )
+            syncer.compareAndSyncFiles(sources, options)
+            val files =
+                syncer
+                    .enumerateSyncFiles()
+                    .toList()
+            assertEquals(
+                listOf(".fishsync-user.txt", "world:one.txt"),
+                files
+                    .map { it.path.subPath }
+                    .sorted(),
+            )
+            syncer.deleteSafFiles(files)
+        }
+
     private fun textSource(relativePath: String): SyncFile =
         object : SyncFile(
             RootedPath.fromSubPath(relativePath, PathOptions()),

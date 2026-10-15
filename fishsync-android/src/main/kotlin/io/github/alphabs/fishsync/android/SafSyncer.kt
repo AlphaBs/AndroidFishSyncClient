@@ -2,6 +2,7 @@ package io.github.alphabs.fishsync.android
 
 import android.content.Context
 import android.net.Uri
+import io.github.alphabs.fishsync.android.internals.SafFileAccess
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
@@ -20,13 +21,13 @@ class SafSyncer(
     private val pathOptions: PathOptions = PathOptions(),
     pairSyncer: ISyncFilePairSyncer = ParallelSyncFilePairSyncer(),
 ) : SyncFileCollectionSyncer(pairSyncer, pathOptions) {
-    private val storage = SafSyncStorage(context, treeUri)
+    private val files = SafFileAccess(context, treeUri)
 
     fun enumerateSyncFiles(): Iterable<SyncFile> =
         sequence {
-            for (entry in storage.list()) {
+            for (entry in files.listPaths()) {
                 val logicalPath =
-                    entry.path
+                    entry
                         .replace('/', pathOptions.pathSeparator)
                 yield(SafSyncFile(context, treeUri, logicalPath, pathOptions))
             }
@@ -59,7 +60,7 @@ class SafSyncer(
         for (file in files) {
             require(file is SafSyncFile && file.treeUri == treeUri) { "Folder URI not matched" }
             if (file.exists) {
-                storage.delete(
+                this.files.delete(
                     file.path.subPath
                         .replace(pathOptions.pathSeparator, '/'),
                 )
