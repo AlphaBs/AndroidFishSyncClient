@@ -5,6 +5,10 @@ plugins {
 android {
     namespace = "io.github.alphabs.fishsync.sample"
     compileSdk = 35
+    packaging {
+        // Android는 JAR 클래스패스 인덱스를 사용하지 않는다.
+        resources.excludes += "META-INF/INDEX.LIST"
+    }
     defaultConfig {
         applicationId = "io.github.alphabs.fishsync.sample"
         minSdk = 26

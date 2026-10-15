@@ -71,6 +71,8 @@ val result = client.pull(bucketId, storage, expectedPlan = plan)
 
 `client.progress`는 전송 이벤트 Flow입니다. 수집하지 않아도 실행이 막히지 않습니다. `pull`/`push`는 suspend 함수이고 취소는 호출 코루틴으로 전달합니다. 스트림 I/O는 강제로 중단하지 않으므로 진행 중인 읽기·쓰기가 반환될 때까지 취소가 지연될 수 있습니다. 일반 파일에는 `FileSyncStorage`를 사용합니다. `push`에는 동기화 루트 밖의 앱 전용 임시 폴더를 전달하세요.
 
+Ant와 Ant Launcher의 JAR 인덱스가 중복되므로 Android 앱에는 `android.packaging.resources.excludes += "META-INF/INDEX.LIST"`를 설정합니다. 샘플 앱과 계측 테스트 모듈에는 반영되어 있습니다.
+
 개발 중 다른 앱에서 사용하려면 세 라이브러리 모듈의 `publishToMavenLocal`을 실행하고 Maven 메타데이터와 함께 참조할 수 있습니다. 공개 Maven 배포는 아직 설정하지 않았습니다.
 
 ## 문서
