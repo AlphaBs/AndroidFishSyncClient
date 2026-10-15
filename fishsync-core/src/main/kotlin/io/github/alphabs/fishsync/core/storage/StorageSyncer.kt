@@ -3,6 +3,7 @@ package io.github.alphabs.fishsync.core.storage
 import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
+import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.internals.OrdinalCase
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
@@ -248,7 +249,7 @@ class StorageSyncer(
                 val targetPath = targets[pathKey(path)]?.path ?: path
 
                 val target = targets[pathKey(path)] ?: FileEntry(targetPath, null)
-                val pair = StorageFilePair(source, target)
+                val pair = SyncFilePair(source, StorageLocalFile(storage, target))
                 filePairSyncer.sync(
                     pair = pair,
                     storage = storage,

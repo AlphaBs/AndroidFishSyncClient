@@ -1,5 +1,7 @@
 package io.github.alphabs.fishsync.core.storage
 
+import io.github.alphabs.fishsync.core.files.SyncFilePair
+
 /**
  * 하나의 파일을 검증하고 적용한다.
  * 구현체는 임시 쓰기, 크기·체크섬 검증, 대상 변경 검사와 취소를 보장해야 한다.
@@ -8,7 +10,7 @@ package io.github.alphabs.fishsync.core.storage
  */
 interface StorageFilePairSyncer {
     suspend fun sync(
-        pair: StorageFilePair,
+        pair: SyncFilePair,
         storage: WritableSyncStorage,
         expectedTargetChecksum: String?,
         onProgress: (SyncProgress) -> Unit,

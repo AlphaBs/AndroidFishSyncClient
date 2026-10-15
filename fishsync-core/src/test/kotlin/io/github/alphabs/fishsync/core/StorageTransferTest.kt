@@ -2,12 +2,12 @@ package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.files.SyncFile
+import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.storage.DefaultStorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.PendingWrite
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
-import io.github.alphabs.fishsync.core.storage.StorageFilePair
 import io.github.alphabs.fishsync.core.storage.StorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
@@ -54,13 +54,13 @@ class StorageTransferTest {
                 val syncer =
                     object : StorageFilePairSyncer {
                         override suspend fun sync(
-                            pair: StorageFilePair,
+                            pair: SyncFilePair,
                             storage: WritableSyncStorage,
                             expectedTargetChecksum: String?,
                             onProgress: (SyncProgress) -> Unit,
                             onApplied: (Long) -> Unit,
                         ) {
-                            synchronizedPaths.add(pair.target.path)
+                            synchronizedPaths.add(pair.target.path.subPath)
                             delegate.sync(
                                 pair,
                                 storage,

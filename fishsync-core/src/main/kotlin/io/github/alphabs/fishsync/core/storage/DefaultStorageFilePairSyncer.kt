@@ -3,6 +3,7 @@ package io.github.alphabs.fishsync.core.storage
 import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.filecomparers.ChecksumMetadataValidator
 import io.github.alphabs.fishsync.core.files.SyncFile
+import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import kotlinx.coroutines.currentCoroutineContext
@@ -12,14 +13,14 @@ import java.io.OutputStream
 
 class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
     override suspend fun sync(
-        pair: StorageFilePair,
+        pair: SyncFilePair,
         storage: WritableSyncStorage,
         expectedTargetChecksum: String?,
         onProgress: (SyncProgress) -> Unit,
         onApplied: (Long) -> Unit,
     ) {
         val source = pair.source
-        val targetPath = pair.target.path
+        val targetPath = pair.target.path.subPath
         source.metadata
             ?.checksum
             ?.let { ChecksumMetadataValidator.validate(it, "source") }
