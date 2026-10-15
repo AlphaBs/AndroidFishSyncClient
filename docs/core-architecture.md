@@ -46,10 +46,10 @@ VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바
 
 ## 앱 저장소 확장
 
-기존 서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 SourceFile·저장소를 원본 SyncFile 모델로 변환해 원본 컬렉션 비교기를 호출하고, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
+기존 서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 SourceFile·저장소를 원본 SyncFile 모델로 변환해 원본 컬렉션 비교기를 호출하고, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. StorageSyncRule은 간편 비교 설정 외에 원본 IFileComparer 객체도 직접 받을 수 있다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
 
 원본 core의 생성자·패키지·결과 타입이 이전 Kotlin 구현과 달라졌으므로 소비자 코드는 새 API로 다시 빌드해야 한다. [Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
 
 ## 검증
 
-테스트는 CI에서만 실행한다. 고정된 원본 소스를 체크아웃하고 .NET 비교 결과와 glob 결과를 생성해 Kotlin과 대조한다. 객체·비교 정책·병렬 실패·취소·진행률·버전 및 HTTP/SAF 계약을 테스트하며 Debug/Release 빌드와 Android lint도 실행한다. 타입 대응표의 파일 존재와 전체 동작의 동일성 보장은 구분한다.
+테스트는 CI에서만 실행한다. 고정된 원본 소스를 체크아웃하고 .NET 비교 결과와 glob 결과를 생성해 Kotlin과 대조한다. 객체·비교 정책·병렬 실패·취소·진행률·버전 및 HTTP/SAF 계약을 테스트한다. Android 계측은 API 26과 35에서 실행하며 Debug/Release 빌드와 Android lint도 실행한다. 타입 대응표의 파일 존재와 전체 동작의 동일성 보장은 구분한다.

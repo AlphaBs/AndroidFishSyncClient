@@ -6,6 +6,7 @@ import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.filecomparers.FileComparerException
 import io.github.alphabs.fishsync.core.files.LocalSyncFile
+import io.github.alphabs.fishsync.core.files.SyncFileMetadata
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import java.io.InputStream
@@ -17,7 +18,8 @@ class SafSyncFile(
     val treeUri: Uri,
     relativePath: String,
     pathOptions: PathOptions = PathOptions(),
-) : LocalSyncFile(RootedPath.fromSubPath(relativePath, pathOptions)) {
+    metadata: SyncFileMetadata? = null,
+) : LocalSyncFile(RootedPath.fromSubPath(relativePath, pathOptions), metadata) {
     private val storage = SafSyncStorage(context, treeUri)
     private val documentPath =
         path.subPath

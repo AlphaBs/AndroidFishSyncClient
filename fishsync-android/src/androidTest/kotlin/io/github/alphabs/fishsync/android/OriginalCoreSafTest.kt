@@ -47,31 +47,7 @@ class OriginalCoreSafTest {
     @Test
     fun safFilesUseOriginalComparerAndKeepUrisOutOfFilesystemPaths() =
         runBlocking<Unit> {
-            val source =
-                object : SyncFile(
-                    RootedPath.fromSubPath("folder/한글.txt", PathOptions()),
-                    SyncFileMetadata(
-                        3,
-                        SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
-                    ),
-                ) {
-                    override val isReadable = true
-                    override val isWritable = false
-
-                    override suspend fun openReadStream() = "123".byteInputStream()
-
-                    override suspend fun openWriteStream(): OutputStream = error("read only")
-
-                    override suspend fun copyTo(
-                        destination: OutputStream,
-                        progress: (
-                            (ByteProgress) -> Unit
-                        )?,
-                    ) {
-                        destination.write("123".toByteArray())
-                        progress?.invoke(ByteProgress(0, 3))
-                    }
-                }
+            val source = textSource("folder/한글.txt")
             val options =
                 SyncerOptions(
                     listOf(
@@ -112,5 +88,61 @@ class OriginalCoreSafTest {
             assertTrue(file.exists)
             syncer.deleteSafFiles(deleted)
             assertFalse(file.exists)
+        }
+
+    @Test
+    fun appDirectoryFactoryResolvesTrustedAndroidAliases() =
+        runBlocking<Unit> {
+            val syncer = AndroidStorage.appLocalSyncer(context)
+            val source = textSource("core-factory.txt")
+            val options =
+                SyncerOptions(
+                    listOf(
+                        SyncRule(
+                            SyncAction.FullSync,
+                            SyncCondition.Always,
+                            "**",
+                            LocalFileChecksumComparer(),
+                        ),
+                    ),
+                )
+            val result = syncer.compareAndSyncFiles(listOf(source), options)
+            val target =
+                (result.updatedFilePairs + result.identicalFilePairs)
+                    .single()
+                    .target
+            try {
+                assertTrue(target.path.isRooted)
+                assertEquals(
+                    "123",
+                    target
+                        .openReadStream()
+                        .bufferedReader()
+                        .use { it.readText() },
+                )
+            } finally {
+                syncer.deleteLocalFiles(listOf(target))
+            }
+        }
+
+    private fun textSource(relativePath: String): SyncFile =
+        object : SyncFile(
+            RootedPath.fromSubPath(relativePath, PathOptions()),
+            SyncFileMetadata(3, SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70")),
+        ) {
+            override val isReadable = true
+            override val isWritable = false
+
+            override suspend fun openReadStream() = "123".byteInputStream()
+
+            override suspend fun openWriteStream(): OutputStream = error("read only")
+
+            override suspend fun copyTo(
+                destination: OutputStream,
+                progress: ((ByteProgress) -> Unit)?,
+            ) {
+                destination.write("123".toByteArray())
+                progress?.invoke(ByteProgress(0, 3))
+            }
         }
 }

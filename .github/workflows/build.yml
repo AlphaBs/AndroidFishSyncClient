@@ -2,6 +2,9 @@ name: Build
 on: [push, pull_request]
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -44,6 +47,10 @@ jobs:
   android-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 35]
     env:
       ANDROID_USER_HOME: ${{ github.workspace }}/.ci-android/user
       ANDROID_AVD_HOME: ${{ github.workspace }}/.ci-android/avd
@@ -65,9 +72,9 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Install emulator image
         run: |
-          sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
+          sdkmanager "platform-tools" "emulator" "system-images;android-${{ matrix.api }};google_apis;x86_64"
           mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
-          echo no | avdmanager create avd --name fishsync-ci --package "system-images;android-35;google_apis;x86_64" --path "$ANDROID_AVD_HOME/fishsync-ci.avd"
+          echo no | avdmanager create avd --name fishsync-ci --package "system-images;android-${{ matrix.api }};google_apis;x86_64" --path "$ANDROID_AVD_HOME/fishsync-ci.avd"
           "$ANDROID_HOME/emulator/emulator" -list-avds
       - name: Run SAF instrumented tests
         run: |
@@ -80,7 +87,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-test-results
+          name: android-test-results-api-${{ matrix.api }}
           path: |
             fishsync-android/build/reports/androidTests/
             fishsync-android/build/outputs/androidTest-results/
