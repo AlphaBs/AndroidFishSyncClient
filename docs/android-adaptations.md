@@ -7,7 +7,7 @@
 | 상대 경로 | RootedPath, PathOptions, `.`·중복 구분자 정규화, `..` 거부 | SAF 문서 안에서도 논리 상대 경로로 유지한다. URI를 절대 파일 경로로 해석하지 않는다. |
 | 파일 시스템 루트 | 원본 LocalPathGuard가 루트와 조상·하위 경로 링크를 거부 | 신뢰하는 Context.filesDir의 Android 경로 별칭만 AndroidStorage.appLocalSyncer에서 canonicalPath로 해석한다. 임의 경로나 URI를 canonicalize해 검사 우회에 사용하지 않는다. |
 | URI·권한 | 파일의 읽기·쓰기 능력과 실패 전파 | SafSyncFile은 treeUri를 별도로 보관하고 ContentResolver와 DocumentsContract를 사용한다. 선택한 트리의 읽기·쓰기 권한 유지와 재확인이 필요하다. |
-| 경로 대소문자 | PathOptions.caseInsensitive 기본값 true 유지 | Android 파일 시스템이 대소문자를 구분한다는 이유로 동기화 정책을 자동 변경하지 않는다. .NET OrdinalIgnoreCase 규칙으로 비교한다. |
+| 경로 대소문자 | PathOptions.caseInsensitive 기본값 true 유지 | Android 파일 시스템이 대소문자를 구분한다는 이유로 동기화 정책을 자동 변경하지 않는다. Kotlin 표준 String.CASE_INSENSITIVE_ORDER로 비교한다. |
 | 파일 크기 | 메타데이터가 없으면 비교기 정책에 따라 오류 처리 | 문서 제공자의 크기는 미상일 수 있다. 크기 전용 비교에서는 명확한 FileComparerException을 반환하며 0으로 꾸미지 않는다. 체크섬 비교와 스트리밍은 계속 사용할 수 있다. |
 | 취소 | 취소 전파 및 진행 중 작업을 관찰한 뒤 반환 | 버퍼 작업 사이에서 코루틴 취소를 확인한다. 읽기·쓰기를 강제로 중단하지 않으므로 blocking I/O가 반환될 때까지 취소 완료가 지연될 수 있다. |
 | 진행률 | 파일·바이트 객체, 델타와 합계 집계 | SAF는 seek/position을 지원하지 않을 수 있으므로 읽은 바이트를 직접 센다. 코루틴이 스레드를 이동하므로 합계는 ThreadLocal 대신 원자적 값으로 관리한다. |
@@ -39,7 +39,6 @@ JVM에 대응 기능이 없는 경우와 비슷한 기능의 세부 규칙이 �
 
 | 구현 | 필요했던 이유 | 판단 |
 | --- | --- | --- |
-| OrdinalCase | Java의 대소문자 무시 비교와 .NET OrdinalIgnoreCase는 점 없는 i 등 일부 Unicode 문자의 처리가 다르다. | 비교 기능 자체는 JVM에도 있다. 호환성 보정이며 모든 Unicode 버전 간 완전 일치를 보장하는 구현은 아니다. |
 | DotNetWhitespace | Kotlin trim과 .NET String.Trim의 공백 집합이 다르다. | 버전 문자열의 원본 결과를 유지하기 위한 작은 보정이다. |
 | 협력적 스트림 취소 | 일반 Java InputStream/OutputStream에는 CancellationToken을 받는 읽기·쓰기 API가 없다. | 강제 취소 연결은 제거했다. 읽기·쓰기 반환 후 취소를 확인하며 진행 중인 blocking I/O는 기다린다. |
 | ConcurrentByteProgressAggregator | 원본 ThreadLocal 집계를 그대로 쓰면 스레드를 이동하는 코루틴의 수명과 맞지 않는다. | 원자적 합계로 단순화했다. ThreadLocal 자체를 흉내 내지 않는다. |
@@ -55,10 +54,28 @@ Task/ValueTask, IProgress, Stream을 별도 .NET 모방 계층으로 복제하�
 - `**`: 디렉터리 0개 이상. `**/*.txt`는 `file.txt`와 `a/b/file.txt`를 포함한다.
 - `[ab]`, `[a-z]`, `{a,b}`는 문자 집합이나 선택 문법으로 해석하지 않는다.
 - 잘못 닫힌 대괄호 등의 DotNet.Glob 특이 동작은 유지하지 않는다.
-- Ant의 Unicode 대소문자 판정을 그대로 사용한다. 경로 키와 루트 경계에 사용하는 OrdinalCase 보정은 별개로 유지한다.
+- Ant의 Unicode 대소문자 판정을 그대로 사용한다. 경로 인덱스는 Kotlin 표준 String.CASE_INSENSITIVE_ORDER를, 루트 경계는 startsWith(ignoreCase)를 사용한다.
 
-## 유지한 Unicode 보정의 범위
+## 대소문자와 버전 공백 정책
 
-OrdinalCase는 경로의 중복·동일성·루트 경계 비교에 사용한다. 예를 들어 점 없는 소문자 `ı`(U+0131)를 `I`와 합치지 않는다. Java의 대소문자 무시 판정과 .NET OrdinalIgnoreCase의 차이를 맞추기 위한 보정이며, 일반 영문자와 한글 경로에는 이 예외가 영향을 주지 않는다.
+경로 인덱스와 중복·존재 집합은 Kotlin 표준 String.CASE_INSENSITIVE_ORDER를 사용한다. 원본 이름을 대문자·소문자로 변환해 별도의 키를 만들지 않는다. 루트 경계는 startsWith(ignoreCase)를 사용한다. 따라서 `I`와 `ı`, `İ`와 `i`는 대소문자 무시 모드에서 같은 이름으로 취급한다. caseInsensitive=false이면 구분한다. 비교 결과의 원본 순서와 대상 파일 이름은 유지한다. 서버 PULL/PUSH에도 같은 표준 비교기를 사용한다.
 
-DotNetWhitespace는 버전 문자열에만 사용한다. .NET String.Trim은 `U+0085`를 공백으로 제거하지만 Kotlin 기본 trim은 남긴다. 반대로 `U+001C`는 Kotlin에서 제거될 수 있지만 .NET에서는 남긴다. 일반 스페이스·탭·개행은 양쪽 모두 제거한다. Unicode 정규화(NFC/NFD)나 경로 공백 제거를 하는 기능은 아니다.
+DotNetWhitespace는 버전 문자열에만 유지한다. .NET String.Trim은 `U+0085`를 공백으로 제거하지만 Kotlin 기본 trim은 남긴다. 반대로 `U+001C`는 Kotlin에서 제거될 수 있지만 .NET에서는 남긴다. 일반 스페이스·탭·개행은 양쪽 모두 제거한다. Unicode 정규화(NFC/NFD)나 경로 공백 제거를 하는 기능은 아니다.
+
+## ant-style-path-matcher 1.0.0 소스 검토
+
+검토 대상은 Maven Central의 `io.github.azagniotov:ant-style-path-matcher:1.0.0` 소스 JAR다. AntPathMatcher.java와 AntPathMatcherArrays.java가 GitHub 커밋 `d66d51908bb7f66586f0bf5384ec348105c8fbac`의 소스와 바이트 단위로 일치함을 확인했다. 소스 제어 흐름을 직접 추적한 정적 검토이며 후보 매처를 로컬에서 실행하지 않았다. **이 후보는 채택하지 않는다.**
+
+- `*` 처리의 접미사 탐색 루프가 경로 구분자에서 멈추지 않는다. 따라서 `*.txt`가 `dir/file.txt`와, `a*b`가 `a/x/b`와 일치하는 흐름이 된다. 두 구현 모두 같은 문제다.
+- `?` 분기에 구분자 제외 검사가 없다. `a?b`가 `a/b`와 일치하는 흐름이 된다.
+- ignoreCase는 문자의 차이가 32인지만 확인하며 영문자 범위 검사도 없다. `A.txt`와 `!.txt`가 같다고 판단한다. Unicode의 일반 대소문자 비교도 제공하지 않는다.
+- 문자 단위 재귀와 wildcard의 반복 재시도를 사용한다. 긴 입력에는 호출 스택이 커지고 여러 wildcard 뒤에서 실패하는 입력에는 중복 탐색이 커질 수 있다. Arrays 구현은 substring 할당만 줄이며 재귀·재탐색 구조는 같다. 성능 수치는 측정하지 않았다.
+- String 구현의 trimTokens=true 경로에서는 공백만 있는 비어 있지 않은 문자열을 처리할 때 charAt(length)에 도달할 수 있다. 기본 옵션에서는 비활성화된 분기다.
+
+확인한 코드 위치:
+
+- [AntPathMatcher.java:51–73](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcher.java#L51-L73): wildcard 및 경로 구분자 처리.
+- [AntPathMatcher.java:105–122](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcher.java#L105-L122): 공백 및 대소문자 처리.
+- [AntPathMatcherArrays.java:57–80](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcherArrays.java#L57-L80): 배열 구현에도 동일한 wildcard 처리.
+
+현재 Apache Ant 의존성을 유지한다. 후보의 잘못된 동작을 허용하는 호환 코드를 추가하지 않는다. 경로 구분자·문장부호·Unicode 대소문자에 대한 정상 동작은 현재 AntPattern의 CI 회귀 테스트에 추가했다.

@@ -32,4 +32,19 @@ class AntPatternTest {
         assertTrue(AntPattern("**/*.txt", true).matches("A/FILE.TXT"))
         assertFalse(AntPattern("**/*.txt").matches("A/FILE.TXT"))
     }
+
+    @Test
+    fun singleWildcardsNeverCrossDirectoryBoundaries() {
+        assertFalse(AntPattern("a?b").matches("a/b"))
+        assertFalse(AntPattern("a*b").matches("a/x/b"))
+        assertFalse(AntPattern("*.txt").matches("dir/file.txt"))
+        assertTrue(AntPattern("a*b").matches("axyb"))
+    }
+
+    @Test
+    fun insensitiveMatchingDoesNotConfuseLettersWithPunctuation() {
+        assertFalse(AntPattern("A.txt", true).matches("!.txt"))
+        assertTrue(AntPattern("A.txt", true).matches("a.txt"))
+        assertTrue(AntPattern("İ.txt", true).matches("i.txt"))
+    }
 }

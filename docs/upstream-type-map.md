@@ -66,6 +66,7 @@ Kotlin/JVM 대응:
 - Task/ValueTask 및 CancellationToken은 suspend 함수와 호출 코루틴의 취소 문맥으로 대응한다.
 - .NET Stream은 InputStream/OutputStream으로 분리한다. 취소는 버퍼 작업 사이에서 확인하며 blocking I/O를 강제로 중단하지 않는다.
 - glob은 사용자 결정에 따라 Apache Ant를 사용하며 DotNet.Glob의 세부 동작은 복제하지 않는다.
+- 경로의 대소문자 비교는 Kotlin 표준 API를 사용한다. .NET OrdinalIgnoreCase 보정은 유지하지 않는다.
 - IProgress<T>는 타입화된 Kotlin 콜백으로 대응한다. 파일·바이트 진행률 객체와 집계 역할은 유지한다.
 - .NET init-only 메타데이터는 Kotlin 생성자의 val 속성으로 대응한다.
 - IEnumerable 탐색과 추가 파일 쌍 생성은 지연 실행한다. Collection.Count는 Kotlin size로 대응한다.

@@ -10,7 +10,7 @@
 | syncer | SyncPathComparer, 규칙·옵션·결과, ISyncFilePairSyncer, ParallelSyncFilePairSyncer, SyncFileCollectionSyncer, 상속형 LocalSyncer |
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
 | versions | IVersionManager, 파일 구현 VersionManager, NullVersionManager |
-| internals | 원본 경로·스트림·진행률 보조 객체 및 Ant glob 연결·Unicode 보정 |
+| internals | 원본 경로·스트림·진행률 보조 객체 및 Ant glob 연결·스트림 진행률 보조 |
 | storage | 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
 
 ## 원본 계약으로 조립
@@ -37,6 +37,8 @@ syncer.deleteLocalFiles(result.deletedFiles)
 ```
 
 규칙마다 IFileComparer를 전달한다. CompositeFileComparerWithGlob은 처음 일치하는 패턴의 비교기 하나를 선택한다. 메타데이터 비교기는 오류 처리 모드를 지원하며 로컬 비교기와 구분한다. 원본처럼 전송 후 같은 규칙의 비교기로 검증한다.
+
+경로의 대소문자 비교는 Kotlin 표준 비교기와 ignoreCase 옵션을 사용한다. .NET OrdinalIgnoreCase 보정 계층은 두지 않는다.
 
 추상 SyncFile은 경로·불변 메타데이터·읽기·쓰기·복사 계약을 가진다. 일반 파일·HTTP·가상 파일과 파일 쌍·컬렉션은 공통 타입을 사용한다. 결과는 경로 문자열만이 아니라 파일 객체와 파일 쌍을 반환한다.
 

@@ -4,7 +4,6 @@ import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.internals.OrdinalCase
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import io.github.alphabs.fishsync.core.storage.relativePath
@@ -58,16 +57,17 @@ class StorageSyncer(
             }
         }
 
-    private fun pathKey(path: String): String = if (caseInsensitive) OrdinalCase.key(path) else path
+    private val pathComparator =
+        if (caseInsensitive) String.CASE_INSENSITIVE_ORDER else naturalOrder<String>()
 
     private fun <T> indexByPath(
         items: List<T>,
         path: (T) -> String,
     ): Map<String, T> {
-        val result = linkedMapOf<String, T>()
+        val result = sortedMapOf<String, T>(pathComparator)
 
         for (item in items) {
-            val key = pathKey(relativePath(path(item)))
+            val key = relativePath(path(item))
             require(result.put(key, item) == null) { "Duplicate path" }
         }
 
@@ -176,9 +176,7 @@ class StorageSyncer(
     ): String {
         val signature = StringBuilder()
         val mutatedKeys =
-            mutatedPaths
-                .map { pathKey(it) }
-                .toSet()
+            mutatedPaths.toSortedSet(pathComparator)
 
         for (source in sources.sortedBy { it.path.subPath }) {
             signature.append(source.path.subPath)
@@ -197,7 +195,7 @@ class StorageSyncer(
 
         for (target in targets.sortedBy { it.path }) {
             val checksum =
-                if (pathKey(target.path) in mutatedKeys) {
+                if (target.path in mutatedKeys) {
                     storage
                         .read(target.path)
                         .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
@@ -222,23 +220,18 @@ class StorageSyncer(
         storage: WritableSyncStorage,
     ): SyncResult {
         val changedKeys =
-            (plan.updated + plan.deleted)
-                .map { pathKey(it) }
-                .toSet()
+            (plan.updated + plan.deleted).toSortedSet(pathComparator)
         val original =
             storage
                 .list()
-                .filter { pathKey(it.path) in changedKeys }
+                .filter { it.path in changedKeys }
                 .associate { entry ->
                     entry.path to
                         storage
                             .read(entry.path)
                             .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
                 }
-        val targets =
-            storage
-                .list()
-                .associateBy { pathKey(it.path) }
+        val targets = indexByPath(storage.list()) { it.path }
         val applied = mutableListOf<String>()
         val deleted = mutableListOf<String>()
 
@@ -246,9 +239,9 @@ class StorageSyncer(
             for (path in plan.added + plan.updated) {
                 currentCoroutineContext().ensureActive()
                 val source = sources.first { it.path.subPath == path }
-                val targetPath = targets[pathKey(path)]?.path ?: path
+                val targetPath = targets[path]?.path ?: path
 
-                val target = targets[pathKey(path)] ?: FileEntry(targetPath, null)
+                val target = targets[path] ?: FileEntry(targetPath, null)
                 val pair = SyncFilePair(source, StorageLocalFile(storage, target))
                 filePairSyncer.sync(
                     pair = pair,

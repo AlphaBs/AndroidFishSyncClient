@@ -47,7 +47,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.URI
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class FishSyncClient(
@@ -215,16 +214,11 @@ class FishSyncClient(
             result.dependencies
                 .isEmpty(),
         ) { "Dependent buckets are not supported yet" }
-        val seen = hashSetOf<String>()
+        val seen = sortedSetOf(String.CASE_INSENSITIVE_ORDER)
 
         for (file in result.files) {
             require(relativePath(file.path) == file.path)
-            require(
-                seen.add(
-                    file.path
-                        .lowercase(Locale.ROOT),
-                ),
-            ) { "Duplicate remote path" }
+            require(seen.add(file.path)) { "Duplicate remote path" }
             require(file.metadata.size >= 0)
             require(
                 file.metadata.checksum.length == 32 &&
@@ -257,20 +251,15 @@ class FishSyncClient(
     ): SyncPlan {
         val remote =
             remoteFiles.files
-                .associateBy {
-                    it.path
-                        .lowercase(Locale.ROOT)
-                }
-        val seen = hashSetOf<String>()
+                .associateByTo(sortedMapOf(String.CASE_INSENSITIVE_ORDER)) { it.path }
+        val seen = sortedSetOf(String.CASE_INSENSITIVE_ORDER)
         val signature = StringBuilder()
         val added = mutableListOf<String>()
         val updated = mutableListOf<String>()
         val identical = mutableListOf<String>()
 
         for (entry in local.sortedBy { it.path }) {
-            val key =
-                entry.path
-                    .lowercase(Locale.ROOT)
+            val key = entry.path
             require(seen.add(key)) { "Duplicate local path" }
             appendSnapshotSignature(signature, entry)
 
@@ -386,16 +375,11 @@ class FishSyncClient(
         directory: File,
         copies: MutableMap<String, File>,
     ): List<UploadFile> {
-        val seen = hashSetOf<String>()
+        val seen = sortedSetOf(String.CASE_INSENSITIVE_ORDER)
         val snapshot = mutableListOf<UploadFile>()
 
         for (entry in storage.list()) {
-            require(
-                seen.add(
-                    entry.path
-                        .lowercase(Locale.ROOT),
-                ),
-            ) { "Duplicate local path" }
+            require(seen.add(entry.path)) { "Duplicate local path" }
             val temporary = File.createTempFile("fishsync-upload-", ".tmp", directory)
             copies[entry.path] = temporary
             copyUploadFile(storage, entry.path, temporary)

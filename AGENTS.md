@@ -14,3 +14,5 @@
 - 원본에 없는 앱 저장소·미리보기·안전 적용 기능은 `storage` 확장에 두며 Android의 URI·권한·경로 별칭은 Android 모듈에서 처리한다.
 - 비동기 API는 suspend·콜백·JVM 스트림으로 구현한다. 스트림 취소는 버퍼 작업 사이의 코루틴 취소 확인만 사용하며 강제 인터럽트·자동 닫기·SAF CancellationSignal 연결은 사용하지 않는다.
 - glob 문법과 매칭 결과는 Apache Ant를 따른다. DotNet.Glob의 경계 동작과 문자 집합 문법을 복제하지 않는다.
+
+- 경로 대소문자 비교는 Kotlin 표준 String.CASE_INSENSITIVE_ORDER와 ignoreCase 옵션을 사용한다. .NET OrdinalIgnoreCase의 별도 Unicode 보정을 추가하지 않는다.

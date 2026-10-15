@@ -3,7 +3,6 @@ package io.github.alphabs.fishsync.core.syncer
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.internals.OrdinalCase
 
 open class SyncPathComparer {
     fun comparePaths(
@@ -11,44 +10,36 @@ open class SyncPathComparer {
         targets: Iterable<SyncFile>,
         options: PathOptions,
     ): SyncFilePathCompareResult {
-        val sourceIndex = index(sources, options)
-        val targetIndex = index(targets, options)
+        val sourceFiles = sources.toList()
+        val targetFiles = targets.toList()
+        val sourceIndex = index(sourceFiles, options)
+        val targetIndex = index(targetFiles, options)
+        val added = mutableListOf<SyncFile>()
         val duplicated = mutableListOf<SyncFilePair>()
-        for ((key, source) in sourceIndex) {
-            val target = targetIndex[key] ?: continue
-            duplicated.add(SyncFilePair(source, target))
+        for (source in sourceFiles) {
+            val target = targetIndex[source.path.subPath]
+            if (target == null) {
+                added.add(source)
+            } else {
+                duplicated.add(SyncFilePair(source, target))
+            }
         }
-        for (pair in duplicated) {
-            sourceIndex.remove(key(pair.source.path.subPath, options))
-            targetIndex.remove(key(pair.target.path.subPath, options))
-        }
-        return SyncFilePathCompareResult(
-            sourceIndex.values
-                .toList(),
-            duplicated,
-            targetIndex.values
-                .toList(),
-        )
+        val deleted = targetFiles.filter { it.path.subPath !in sourceIndex }
+        return SyncFilePathCompareResult(added, duplicated, deleted)
     }
 
     private fun index(
-        files: Iterable<SyncFile>,
+        files: List<SyncFile>,
         options: PathOptions,
-    ): LinkedHashMap<String, SyncFile> {
-        val result = linkedMapOf<String, SyncFile>()
+    ): Map<String, SyncFile> {
+        val comparator =
+            if (options.caseInsensitive) String.CASE_INSENSITIVE_ORDER else naturalOrder<String>()
+        val result = sortedMapOf<String, SyncFile>(comparator)
         for (file in files) {
-            require(result.put(key(file.path.subPath, options), file) == null) {
+            require(result.put(file.path.subPath, file) == null) {
                 "Duplicate path: ${file.path.subPath}"
             }
         }
         return result
-    }
-
-    private fun key(
-        path: String,
-        options: PathOptions,
-    ): String {
-        if (!options.caseInsensitive) return path
-        return OrdinalCase.key(path)
     }
 }

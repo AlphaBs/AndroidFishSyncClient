@@ -99,4 +99,54 @@ class StoragePolicyTest {
                 directory.deleteRecursively()
             }
         }
+
+    @Test
+    fun unicodeUpdateUsesStandardComparisonAndKeepsExistingFileName() =
+        runBlocking<Unit> {
+            val directory =
+                Files
+                    .createTempDirectory("unicode-update-")
+                    .toFile()
+            try {
+                val target = File(directory, "ı.txt")
+                target.writeText("old")
+                val source =
+                    testSyncFile(
+                        "I.txt",
+                        3,
+                        SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
+                    ) { "123".byteInputStream() }
+                val rules =
+                    listOf(
+                        SyncRule(
+                            SyncAction.FullSync,
+                            SyncCondition.Always,
+                            "**",
+                            LocalFileChecksumComparer(),
+                        ),
+                    )
+                val storage = FileSyncStorage(directory)
+                val syncer = StorageSyncer()
+                val plan = syncer.compareFiles(listOf(source), storage, rules)
+                assertEquals(listOf("I.txt"), plan.updated)
+                assertTrue(
+                    plan.added
+                        .isEmpty(),
+                )
+                assertTrue(
+                    plan.deleted
+                        .isEmpty(),
+                )
+                syncer.compareAndSyncFiles(listOf(source), storage, rules, expectedPlan = plan)
+                assertEquals("123", target.readText())
+                assertEquals(
+                    listOf("ı.txt"),
+                    storage
+                        .list()
+                        .map { it.path },
+                )
+            } finally {
+                directory.deleteRecursively()
+            }
+        }
 }

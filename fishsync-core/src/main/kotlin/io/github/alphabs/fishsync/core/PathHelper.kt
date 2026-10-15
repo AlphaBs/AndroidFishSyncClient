@@ -1,6 +1,5 @@
 package io.github.alphabs.fishsync.core
 
-import io.github.alphabs.fishsync.core.internals.OrdinalCase
 import io.github.alphabs.fishsync.core.internals.endsInNativeDirectorySeparator
 import java.io.File
 import java.nio.file.Files
@@ -87,7 +86,7 @@ object PathHelper {
         path: String,
         options: PathOptions,
     ): Boolean =
-        OrdinalCase.regionMatches(path, 0, root, options.caseInsensitive) &&
+        path.startsWith(root, ignoreCase = options.caseInsensitive) &&
             (
                 root.last() == options.pathSeparator ||
                     path.getOrNull(root.length) == options.pathSeparator

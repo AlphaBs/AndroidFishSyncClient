@@ -279,6 +279,62 @@ class ClientTest {
         }
 
     @Test
+    fun remoteUnicodeDuplicatesUseStandardCaseComparison() =
+        runBlocking<Unit> {
+            MockWebServer().use { server ->
+                val body =
+                    buildJsonObject {
+                        putJsonArray("files") {
+                            for (name in listOf("I.txt", "ı.txt")) {
+                                addJsonObject {
+                                    put("path", name)
+                                    putJsonObject("metadata") {
+                                        put("size", 3)
+                                        put("checksum", md5)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                server.enqueue(jsonResponse(body.toString()))
+                assertFailsWith<IllegalArgumentException> {
+                    FishSyncClient(apiUrl(server)).files("bucket")
+                }
+            }
+        }
+
+    @Test
+    fun pushComparisonUsesTheSameUnicodeCasePolicyAsPull() =
+        runBlocking<Unit> {
+            MockWebServer().use { server ->
+                val directory = temporaryDirectory("unicode-push-")
+                try {
+                    File(directory, "I.txt").writeText("123")
+                    server.enqueue(fileResponse("ı.txt"))
+                    val plan =
+                        FishSyncClient(
+                            apiUrl(server),
+                        ).comparePush("bucket", FileSyncStorage(directory))
+                    assertEquals(listOf("I.txt"), plan.identical)
+                    assertTrue(
+                        plan.added
+                            .isEmpty(),
+                    )
+                    assertTrue(
+                        plan.updated
+                            .isEmpty(),
+                    )
+                    assertTrue(
+                        plan.deleted
+                            .isEmpty(),
+                    )
+                } finally {
+                    directory.deleteRecursively()
+                }
+            }
+        }
+
+    @Test
     fun requestCancellationDoesNotWaitForTimeout() =
         runBlocking<Unit> {
             MockWebServer().use { server ->
