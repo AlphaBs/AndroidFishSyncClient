@@ -3,7 +3,7 @@ package io.github.alphabs.fishsync.core.filecomparers
 import io.github.alphabs.fishsync.core.files.LocalSyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
 
-open class LocalFileSizeComparer : IFileComparer {
+open class LocalFileSizeComparer : FileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean {
         val target =
             pair.target as? LocalSyncFile

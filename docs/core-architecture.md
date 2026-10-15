@@ -6,10 +6,10 @@
 | --- | --- |
 | core 루트 | RootedPath, PathOptions, PathHelper, ChecksumAlgorithms, ChecksumAlgorithmNames, HashHelper |
 | files | 추상 SyncFile, LocalSyncFile, ReadableHttpSyncFile, VirtualSyncFile, 파일 메타데이터·쌍·컬렉션 |
-| filecomparers | IFileComparer, IFileComparerFactory, 로컬·메타데이터 비교기, glob 비교기와 오류 정책 |
-| syncer | SyncPathComparer, 규칙·옵션·결과, ISyncFilePairSyncer, ParallelSyncFilePairSyncer, SyncFileCollectionSyncer, 상속형 LocalSyncer |
+| filecomparers | FileComparer, FileComparerFactory, 로컬·메타데이터 비교기, glob 비교기와 오류 정책 |
+| syncer | SyncPathComparer, 규칙·옵션·결과, SyncFilePairSyncer, ParallelSyncFilePairSyncer, SyncFileCollectionSyncer, 상속형 LocalSyncer |
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
-| versions | IVersionManager, 파일 구현 VersionManager, NullVersionManager |
+| versions | VersionManager, 파일 구현 FileVersionManager, NullVersionManager |
 | internals | 원본 경로·스트림·진행률 보조 객체 및 자체 glob 매처·스트림 진행률 보조 |
 | storage | 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
 

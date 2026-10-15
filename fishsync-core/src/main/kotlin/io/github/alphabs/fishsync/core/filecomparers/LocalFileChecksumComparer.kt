@@ -6,7 +6,7 @@ import io.github.alphabs.fishsync.core.files.SyncFilePair
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-open class LocalFileChecksumComparer : IFileComparer {
+open class LocalFileChecksumComparer : FileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean {
         currentCoroutineContext().ensureActive()
         val target =

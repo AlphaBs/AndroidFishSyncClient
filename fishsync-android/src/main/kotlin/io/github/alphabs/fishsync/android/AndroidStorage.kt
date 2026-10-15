@@ -5,9 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
-import io.github.alphabs.fishsync.core.syncer.ISyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.LocalSyncer
 import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
+import io.github.alphabs.fishsync.core.syncer.SyncFilePairSyncer
 import java.io.File
 
 object AndroidStorage {
@@ -17,7 +17,7 @@ object AndroidStorage {
     fun appLocalSyncer(
         context: Context,
         options: PathOptions = PathOptions(),
-        pairSyncer: ISyncFilePairSyncer = ParallelSyncFilePairSyncer(),
+        pairSyncer: SyncFilePairSyncer = ParallelSyncFilePairSyncer(),
     ): LocalSyncer = LocalSyncer(File(context.filesDir, "sync").canonicalPath, options, pairSyncer)
 
     fun retainFolder(

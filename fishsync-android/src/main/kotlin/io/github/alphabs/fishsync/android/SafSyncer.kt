@@ -6,10 +6,10 @@ import io.github.alphabs.fishsync.android.internals.SafFileAccess
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.syncer.ISyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionComparerResult
 import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
+import io.github.alphabs.fishsync.core.syncer.SyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +19,7 @@ class SafSyncer(
     private val context: Context,
     private val treeUri: Uri,
     private val pathOptions: PathOptions = PathOptions(),
-    pairSyncer: ISyncFilePairSyncer = ParallelSyncFilePairSyncer(),
+    pairSyncer: SyncFilePairSyncer = ParallelSyncFilePairSyncer(),
 ) : SyncFileCollectionSyncer(pairSyncer, pathOptions) {
     private val files = SafFileAccess(context, treeUri)
 

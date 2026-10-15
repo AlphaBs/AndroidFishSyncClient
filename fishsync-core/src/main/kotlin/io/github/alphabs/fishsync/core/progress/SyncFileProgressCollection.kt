@@ -1,12 +1,12 @@
 package io.github.alphabs.fishsync.core.progress
 
-import io.github.alphabs.fishsync.core.files.ISyncFileCollection
 import io.github.alphabs.fishsync.core.files.SyncFile
+import io.github.alphabs.fishsync.core.files.SyncFileCollection
 
 open class SyncFileProgressCollection(
     files: Iterable<SyncFile> = emptyList(),
 ) : AbstractCollection<SyncFile>(),
-    ISyncFileCollection {
+    SyncFileCollection {
     data class SyncFileProgressItem(
         val file: SyncFile,
         var eventType: FileProgressEventType = FileProgressEventType.None,

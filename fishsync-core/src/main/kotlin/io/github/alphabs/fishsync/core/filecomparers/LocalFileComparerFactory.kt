@@ -1,7 +1,7 @@
 package io.github.alphabs.fishsync.core.filecomparers
 
-open class LocalFileComparerFactory : IFileComparerFactory {
-    override fun createFullComparer(): IFileComparer = LocalFileChecksumComparer()
+open class LocalFileComparerFactory : FileComparerFactory {
+    override fun createFullComparer(): FileComparer = LocalFileChecksumComparer()
 
-    override fun createFastComparer(): IFileComparer = LocalFileSizeComparer()
+    override fun createFastComparer(): FileComparer = LocalFileSizeComparer()
 }

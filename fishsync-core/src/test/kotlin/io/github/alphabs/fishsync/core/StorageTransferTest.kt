@@ -16,7 +16,7 @@ import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncRule
-import io.github.alphabs.fishsync.core.versions.IVersionManager
+import io.github.alphabs.fishsync.core.versions.FileVersionManager
 import io.github.alphabs.fishsync.core.versions.NullVersionManager
 import io.github.alphabs.fishsync.core.versions.VersionManager
 import kotlinx.coroutines.runBlocking

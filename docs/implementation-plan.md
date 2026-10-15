@@ -57,7 +57,7 @@ UI와 토큰 영구 저장은 사용하는 앱이 담당한다. 라이브러리�
 | `SyncCondition`, `SyncContext` | Always, OnNewVersion, IsNewVersion, IsForced |
 | `ParallelSyncFilePairSyncer` | 제한된 동시 실행, 실패 전파, 전송 후 검증 |
 | `Progress` | 파일·바이트 진행률 및 크기 미확정 전송 처리 |
-| `VersionManager` | UTF-8 128바이트 한도, trim 및 버전 비교 |
+| `FileVersionManager` | UTF-8 128바이트 한도, trim 및 버전 비교 |
 
 `FullSync`는 추가·갱신 및 대상에만 있는 파일의 삭제 후보를 만든다. `UpdateOnly`는 추가·갱신하되 대상 전용 파일을 보존한다. `InstallOnly`는 없는 파일만 추가하고 기존 파일을 보존한다. `Exclude`는 비교·전송·삭제에서 제외한다. 규칙이 누락되거나 어떤 경로에도 적용 규칙이 없으면 명확한 오류로 처리한다.
 

@@ -5,7 +5,7 @@ import io.github.alphabs.fishsync.core.files.SyncFilePair
 
 open class FileSizeMetadataComparer(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
-) : IFileComparer {
+) : FileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean =
         try {
             size(pair.source) == size(pair.target)

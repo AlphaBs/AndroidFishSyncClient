@@ -13,18 +13,18 @@
 | `FileComparers/CompositeFileComparerWithGlob.cs` | `CompositeFileComparerWithGlob` | [`filecomparers/CompositeFileComparerWithGlob.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/CompositeFileComparerWithGlob.kt) |
 | `FileComparers/FileChecksumMetadataComparer.cs` | `FileChecksumMetadataComparer` | [`filecomparers/FileChecksumMetadataComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/FileChecksumMetadataComparer.kt) |
 | `FileComparers/FileComparerException.cs` | `FileComparerException` | [`filecomparers/FileComparerException.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/FileComparerException.kt) |
-| `FileComparers/FileComparerFactory.cs` | `IFileComparerFactory` | [`filecomparers/IFileComparerFactory.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/IFileComparerFactory.kt) |
+| `FileComparers/FileComparerFactory.cs` | `IFileComparerFactory` | [`filecomparers/FileComparerFactory.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/FileComparerFactory.kt) |
 | `FileComparers/FileComparerFactory.cs` | `LocalFileComparerFactory` | [`filecomparers/LocalFileComparerFactory.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/LocalFileComparerFactory.kt) |
 | `FileComparers/FileSizeMetadataComparer.cs` | `FileSizeMetadataComparer` | [`filecomparers/FileSizeMetadataComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/FileSizeMetadataComparer.kt) |
-| `FileComparers/IFileComparer.cs` | `IFileComparer` | [`filecomparers/IFileComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/IFileComparer.kt) |
+| `FileComparers/IFileComparer.cs` | `IFileComparer` | [`filecomparers/FileComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/FileComparer.kt) |
 | `FileComparers/LocalFileChecksumComparer.cs` | `LocalFileChecksumComparer` | [`filecomparers/LocalFileChecksumComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/LocalFileChecksumComparer.kt) |
 | `FileComparers/LocalFileSizeComparer.cs` | `LocalFileSizeComparer` | [`filecomparers/LocalFileSizeComparer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/LocalFileSizeComparer.kt) |
-| `Files/ISyncFileCollection.cs` | `ISyncFileCollection` | [`files/ISyncFileCollection.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/ISyncFileCollection.kt) |
+| `Files/ISyncFileCollection.cs` | `ISyncFileCollection` | [`files/SyncFileCollection.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFileCollection.kt) |
 | `Files/LocalSyncFile.cs` | `LocalSyncFile` | [`files/LocalSyncFile.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/LocalSyncFile.kt) |
 | `Files/ReadableHttpSyncFile.cs` | `ReadableHttpSyncFile` | [`files/ReadableHttpSyncFile.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/ReadableHttpSyncFile.kt) |
 | `Files/SyncFile.cs` | `SyncFile` | [`files/SyncFile.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFile.kt) |
 | `Files/SyncFileChecksum.cs` | `SyncFileChecksum` | [`files/SyncFileChecksum.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFileChecksum.kt) |
-| `Files/SyncFileCollection.cs` | `SyncFileCollection` | [`files/SyncFileCollection.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFileCollection.kt) |
+| `Files/SyncFileCollection.cs` | `SyncFileCollection` | [`files/DefaultSyncFileCollection.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/DefaultSyncFileCollection.kt) |
 | `Files/SyncFileMetadata.cs` | `SyncFileMetadata` | [`files/SyncFileMetadata.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFileMetadata.kt) |
 | `Files/SyncFilePair.cs` | `SyncFilePair` | [`files/SyncFilePair.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/SyncFilePair.kt) |
 | `Files/VirtualSyncFile.cs` | `VirtualSyncFile` | [`files/VirtualSyncFile.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/files/VirtualSyncFile.kt) |
@@ -43,7 +43,7 @@
 | `Progress/SyncFileProgressCollection.cs` | `SyncFileProgressCollection` | [`progress/SyncFileProgressCollection.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/progress/SyncFileProgressCollection.kt) |
 | `RootedPath.cs` | `RootedPath` | [`RootedPath.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/RootedPath.kt) |
 | `Syncer/FileIntegrityException.cs` | `FileIntegrityException` | [`syncer/FileIntegrityException.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/FileIntegrityException.kt) |
-| `Syncer/ISyncFilePairSyncer.cs` | `ISyncFilePairSyncer` | [`syncer/ISyncFilePairSyncer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/ISyncFilePairSyncer.kt) |
+| `Syncer/ISyncFilePairSyncer.cs` | `ISyncFilePairSyncer` | [`syncer/SyncFilePairSyncer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncFilePairSyncer.kt) |
 | `Syncer/ISyncFilePairSyncer.cs` | `SyncFilePairCollectionCompareResult` | [`syncer/SyncFilePairCollectionCompareResult.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncFilePairCollectionCompareResult.kt) |
 | `Syncer/LocalSyncer.cs` | `LocalSyncer` | [`syncer/LocalSyncer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/LocalSyncer.kt) |
 | `Syncer/ParallelSyncFilePairSyncer.cs` | `ParallelSyncFilePairSyncer` | [`syncer/ParallelSyncFilePairSyncer.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/ParallelSyncFilePairSyncer.kt) |
@@ -57,9 +57,9 @@
 | `Syncer/SyncRule.cs` | `SyncRule` | [`syncer/SyncRule.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncRule.kt) |
 | `Syncer/SyncRuleEvaluator.cs` | `SyncRuleEvaluator` | [`syncer/SyncRuleEvaluator.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncRuleEvaluator.kt) |
 | `Syncer/SyncerOptions.cs` | `SyncerOptions` | [`syncer/SyncerOptions.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncerOptions.kt) |
-| `Versions/IVersionManager.cs` | `IVersionManager` | [`versions/IVersionManager.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/versions/IVersionManager.kt) |
+| `Versions/IVersionManager.cs` | `IVersionManager` | [`versions/VersionManager.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/versions/VersionManager.kt) |
 | `Versions/NullVersionManager.cs` | `NullVersionManager` | [`versions/NullVersionManager.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/versions/NullVersionManager.kt) |
-| `Versions/VersionManager.cs` | `VersionManager` | [`versions/VersionManager.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/versions/VersionManager.kt) |
+| `Versions/VersionManager.cs` | `VersionManager` | [`versions/FileVersionManager.kt`](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/versions/FileVersionManager.kt) |
 
 Kotlin/JVM 대응:
 

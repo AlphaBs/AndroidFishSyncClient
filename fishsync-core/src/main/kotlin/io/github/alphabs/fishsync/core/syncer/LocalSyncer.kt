@@ -15,7 +15,7 @@ import java.nio.file.Files
 open class LocalSyncer(
     root: String,
     private val pathOptions: PathOptions,
-    filePairSyncer: ISyncFilePairSyncer,
+    filePairSyncer: SyncFilePairSyncer,
 ) : SyncFileCollectionSyncer(filePairSyncer, pathOptions) {
     private val root = PathHelper.normalizeRoot(root, pathOptions)
 

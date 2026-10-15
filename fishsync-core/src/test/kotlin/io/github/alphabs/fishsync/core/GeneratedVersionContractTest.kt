@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.core
 
-import io.github.alphabs.fishsync.core.versions.VersionManager
+import io.github.alphabs.fishsync.core.versions.FileVersionManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
@@ -26,7 +26,7 @@ class GeneratedVersionContractTest {
                     .toFile()
             try {
                 val file = File(directory, "version")
-                val manager = VersionManager(file.path)
+                val manager = FileVersionManager(file.path)
                 for (element in fixtures) {
                     val row = element.jsonObject
                     val value =

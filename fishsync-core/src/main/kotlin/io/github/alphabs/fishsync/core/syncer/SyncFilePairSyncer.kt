@@ -1,14 +1,14 @@
 package io.github.alphabs.fishsync.core.syncer
 
-import io.github.alphabs.fishsync.core.filecomparers.IFileComparer
+import io.github.alphabs.fishsync.core.filecomparers.FileComparer
 import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.progress.FileProgressEvent
 import io.github.alphabs.fishsync.core.progress.SyncFileByteProgress
 
-interface ISyncFilePairSyncer {
+interface SyncFilePairSyncer {
     suspend fun compareFilePairs(
         pairs: Iterable<SyncFilePair>,
-        comparer: IFileComparer,
+        comparer: FileComparer,
         fileProgress: ((FileProgressEvent) -> Unit)? = null,
         byteProgress: ((SyncFileByteProgress) -> Unit)? = null,
     ): SyncFilePairCollectionCompareResult
@@ -21,7 +21,7 @@ interface ISyncFilePairSyncer {
 
     suspend fun compareAndSyncFilePairs(
         pairs: Iterable<SyncFilePair>,
-        comparer: IFileComparer,
+        comparer: FileComparer,
         fileProgress: ((FileProgressEvent) -> Unit)? = null,
         byteProgress: ((SyncFileByteProgress) -> Unit)? = null,
     ): SyncFilePairCollectionCompareResult

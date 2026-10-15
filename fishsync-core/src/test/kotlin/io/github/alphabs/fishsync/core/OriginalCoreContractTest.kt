@@ -48,7 +48,7 @@ class OriginalCoreContractTest {
         assertFailsWith<IllegalArgumentException> {
             SyncPathComparer().comparePaths(listOf(source, virtual("a", 4)), emptyList(), paths)
         }
-        assertEquals(source, SyncFileCollection(listOf(source)).findFileByPath("A"))
+        assertEquals(source, DefaultSyncFileCollection(listOf(source)).findFileByPath("A"))
     }
 
     @Test
@@ -83,8 +83,8 @@ class OriginalCoreContractTest {
     fun globComparerSelectsFirstMatchInsteadOfCombiningComparers() =
         runBlocking<Unit> {
             val comparer = CompositeFileComparerWithGlob()
-            comparer.add("*.txt", IFileComparer { false })
-            comparer.add("**", IFileComparer { true })
+            comparer.add("*.txt", FileComparer { false })
+            comparer.add("**", FileComparer { true })
             assertFalse(
                 comparer.areEqual(SyncFilePair(virtual("file.txt", 1), virtual("file.txt", 1))),
             )
@@ -102,13 +102,13 @@ class OriginalCoreContractTest {
                             SyncAction.FullSync,
                             SyncCondition.Always,
                             "*.txt",
-                            IFileComparer { false },
+                            FileComparer { false },
                         ),
                         SyncRule(
                             SyncAction.FullSync,
                             SyncCondition.Always,
                             "**",
-                            IFileComparer { true },
+                            FileComparer { true },
                         ),
                     ),
                 )
@@ -194,7 +194,7 @@ class OriginalCoreContractTest {
             val peak = AtomicInteger()
             val calls = AtomicInteger()
             val comparer =
-                IFileComparer {
+                FileComparer {
                     val count = active.incrementAndGet()
                     peak.updateAndGet { previous -> maxOf(previous, count) }
                     try {
@@ -218,7 +218,7 @@ class OriginalCoreContractTest {
             assertFailsWith<IllegalStateException> {
                 syncer.compareFilePairs(
                     pairs,
-                    IFileComparer { throw IllegalStateException("worker failure") },
+                    FileComparer { throw IllegalStateException("worker failure") },
                 )
             }
             assertEquals(8, calls.get())
@@ -256,7 +256,7 @@ class OriginalCoreContractTest {
                     .createTempDirectory("original-version-")
                     .toFile()
             try {
-                val manager: IVersionManager = VersionManager(File(directory, "version").path)
+                val manager: VersionManager = FileVersionManager(File(directory, "version").path)
                 assertNull(manager.getCurrentVersion())
                 assertTrue(manager.checkNewVersion(" v1 "))
                 manager.updateVersion(" v1 ")
@@ -264,7 +264,7 @@ class OriginalCoreContractTest {
                 assertFalse(manager.checkNewVersion(" v1 "))
                 assertFailsWith<IllegalArgumentException> { manager.updateVersion("가".repeat(43)) }
                 assertEquals("v1", manager.getCurrentVersion())
-                val disabled: IVersionManager = NullVersionManager()
+                val disabled: VersionManager = NullVersionManager()
                 disabled.updateVersion("v1")
                 assertTrue(disabled.checkNewVersion("v1"))
                 assertTrue(disabled.checkNewVersion(null))

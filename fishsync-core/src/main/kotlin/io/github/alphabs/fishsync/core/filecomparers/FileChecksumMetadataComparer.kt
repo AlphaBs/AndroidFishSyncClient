@@ -6,7 +6,7 @@ import kotlinx.coroutines.ensureActive
 
 open class FileChecksumMetadataComparer(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
-) : IFileComparer {
+) : FileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean {
         currentCoroutineContext().ensureActive()
         val source =

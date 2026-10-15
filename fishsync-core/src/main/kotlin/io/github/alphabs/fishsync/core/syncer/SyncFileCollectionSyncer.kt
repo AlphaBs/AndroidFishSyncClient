@@ -1,14 +1,14 @@
 package io.github.alphabs.fishsync.core.syncer
 
 import io.github.alphabs.fishsync.core.PathOptions
-import io.github.alphabs.fishsync.core.filecomparers.IFileComparer
+import io.github.alphabs.fishsync.core.filecomparers.FileComparer
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
 open class SyncFileCollectionSyncer(
-    private val filePairSyncer: ISyncFilePairSyncer,
+    private val filePairSyncer: SyncFilePairSyncer,
     private val pathOptions: PathOptions,
 ) {
     suspend fun compareFiles(
@@ -90,8 +90,8 @@ open class SyncFileCollectionSyncer(
         )
     }
 
-    private fun ruleComparer(evaluator: SyncRuleEvaluator): IFileComparer =
-        IFileComparer { pair ->
+    private fun ruleComparer(evaluator: SyncRuleEvaluator): FileComparer =
+        FileComparer { pair ->
             evaluator
                 .evaluate(pair.source.path.subPath)
                 .comparer!!

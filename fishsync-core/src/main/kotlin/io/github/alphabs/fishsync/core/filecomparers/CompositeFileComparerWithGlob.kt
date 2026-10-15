@@ -5,12 +5,12 @@ import io.github.alphabs.fishsync.core.internals.GlobPattern
 
 open class CompositeFileComparerWithGlob(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
-) : IFileComparer {
-    private val comparers = mutableListOf<Pair<GlobPattern, IFileComparer>>()
+) : FileComparer {
+    private val comparers = mutableListOf<Pair<GlobPattern, FileComparer>>()
 
     fun add(
         pattern: String,
-        comparer: IFileComparer,
+        comparer: FileComparer,
     ) {
         comparers.add(GlobPattern(pattern) to comparer)
     }
