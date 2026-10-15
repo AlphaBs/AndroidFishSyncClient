@@ -112,11 +112,17 @@ class StreamOpenHelperTest {
             val caller = StandardTestDispatcher(callerScheduler)
             val io = StandardTestDispatcher(ioScheduler)
             var opened = false
+            var openingFailure: CancellationException? = null
             val pending =
                 async(caller) {
-                    StreamOpenHelper.open(io) {
-                        opened = true
-                        stream
+                    try {
+                        StreamOpenHelper.open(io) {
+                            opened = true
+                            stream
+                        }
+                    } catch (failure: CancellationException) {
+                        openingFailure = failure
+                        throw failure
                     }
                 }
 
@@ -129,7 +135,9 @@ class StreamOpenHelperTest {
             pending.cancel()
             callerScheduler.runCurrent()
 
-            val failure = assertFailsWith<CancellationException> { pending.await() }
-            failure
+            assertFailsWith<CancellationException> { pending.await() }
+            // 취소된 Deferred.await는 작업 자체의 취소 사유를 반환할 수 있다.
+            // 자원 정리 오류는 열기 메서드가 직접 전달한 예외에서 확인한다.
+            requireNotNull(openingFailure)
         }
 }
