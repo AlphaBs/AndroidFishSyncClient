@@ -5,7 +5,7 @@
 ## 현재 구성
 
 - Kotlin 2.1.20, AGP 8.9.2, Gradle 8.11.1, JDK 17, Android minSdk 26 / compileSdk 35.
-- core는 원본 파일·비교기·규칙·진행률·버전 모델을 제공한다. 규칙은 SyncRule과 IFileComparer로 통일한다.
+- core는 원본 파일·비교기·규칙·진행률·버전 모델을 제공한다. 파일·체크섬·규칙은 SyncFile·SyncFileChecksum·SyncRule·IFileComparer로 통일한다.
 - storage 확장은 미리보기, 임시 파일 검증 후 적용, 실패 시 삭제 생략, 같은 루트 잠금과 부분 적용 결과를 제공한다. 서버 클라이언트와 샘플 앱에서 사용한다.
 - client는 로그인·버킷 조회·PULL/PUSH와 전송 진행률·취소를 제공한다.
 - android는 앱 전용 파일과 SAF 문서 트리 접근을 제공한다. 샘플 앱에서 폴더 선택과 영구 URI 권한 유지를 처리한다.

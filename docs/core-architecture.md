@@ -46,7 +46,7 @@ VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바
 
 ## 앱 저장소 확장
 
-서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 SourceFile·저장소를 원본 SyncFile 모델로 변환해 원본 컬렉션 비교기를 호출하고, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. 규칙은 원본 SyncRule과 IFileComparer를 직접 사용한다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
+서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 원본 SyncFile을 직접 받고 저장소 대상을 StorageLocalFile로 연결해 원본 컬렉션 비교기를 호출하며, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. 규칙은 원본 SyncRule과 IFileComparer를 직접 사용한다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
 
 [Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
 

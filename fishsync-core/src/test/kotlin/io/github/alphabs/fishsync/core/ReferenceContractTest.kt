@@ -1,11 +1,9 @@
 package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
-import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
-import io.github.alphabs.fishsync.core.storage.SourceFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
@@ -67,14 +65,17 @@ class ReferenceContractTest {
                                             "checksum",
                                         ).jsonPrimitive.boolean
                                 ) {
-                                    Checksum(
+                                    SyncFileChecksum(
                                         "md5",
-                                        hash(text.byteInputStream()),
+                                        ChecksumAlgorithms.computeHashAsync(
+                                            "md5",
+                                            text.byteInputStream(),
+                                        ),
                                     )
                                 } else {
                                     null
                                 }
-                            SourceFile(
+                            testSyncFile(
                                 obj
                                     .getValue("path")
                                     .jsonPrimitive.content,

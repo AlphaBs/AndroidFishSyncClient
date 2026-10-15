@@ -1,13 +1,12 @@
 package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
-import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.storage.DefaultStorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.PendingWrite
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
-import io.github.alphabs.fishsync.core.storage.SourceFile
 import io.github.alphabs.fishsync.core.storage.StorageFilePair
 import io.github.alphabs.fishsync.core.storage.StorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
@@ -131,8 +130,8 @@ class StorageTransferTest {
             }
         }
 
-    private fun source(): SourceFile =
-        SourceFile("file.txt", 3, null) {
+    private fun source(): SyncFile =
+        testSyncFile("file.txt", 3, null) {
             "123".byteInputStream()
         }
 }

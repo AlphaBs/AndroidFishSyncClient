@@ -1,22 +1,23 @@
 package io.github.alphabs.fishsync.client
 
+import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
+import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.files.SyncFileMetadata
 import io.github.alphabs.fishsync.core.storage.ChangedFileException
-import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
-import io.github.alphabs.fishsync.core.storage.SourceFile
+import io.github.alphabs.fishsync.core.storage.StorageLocalFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncPlan
 import io.github.alphabs.fishsync.core.storage.SyncProgress
 import io.github.alphabs.fishsync.core.storage.SyncResult
 import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
@@ -156,7 +157,7 @@ class FishSyncClient(
                     val checksum =
                         storage
                             .read(entry.path)
-                            .use { hash(it) }
+                            .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
                     UploadFile(entry.path, entry.size ?: -1, checksum)
                 }
 
@@ -225,11 +226,15 @@ class FishSyncClient(
                 ),
             ) { "Duplicate remote path" }
             require(file.metadata.size >= 0)
-            Checksum("md5", file.metadata.checksum)
+            require(
+                file.metadata.checksum.length == 32 &&
+                    file.metadata.checksum
+                        .all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' },
+            ) { "Invalid server MD5 checksum" }
         }
     }
 
-    private fun sources(files: BucketFiles): List<SourceFile> =
+    private fun sources(files: BucketFiles): List<SyncFile> =
         files.files.map { file ->
             val remote =
                 ReadableHttpSyncFile(
@@ -243,12 +248,7 @@ class FishSyncClient(
             remote.location =
                 file.location
                     ?.let(URI::create)
-            SourceFile(
-                path = file.path,
-                size = file.metadata.size,
-                checksum = Checksum("md5", file.metadata.checksum),
-                open = { remote.openReadStream() },
-            )
+            remote
         }
 
     private suspend fun pushPlan(
@@ -298,7 +298,7 @@ class FishSyncClient(
             signature
                 .toString()
                 .byteInputStream()
-                .use { hash(it, "sha1") }
+                .use { ChecksumAlgorithms.computeHashAsync("sha1", it) }
         val deleted =
             remote
                 .filterKeys { it !in seen }
@@ -403,11 +403,11 @@ class FishSyncClient(
             val checksum =
                 temporary
                     .inputStream()
-                    .use { hash(it) }
+                    .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
             val current =
                 storage
                     .read(entry.path)
-                    .use { hash(it) }
+                    .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
             if (checksum != current) {
                 throw ChangedFileException(entry.path)
             }
@@ -423,11 +423,9 @@ class FishSyncClient(
         path: String,
         target: File,
     ) {
-        val source = SourceFile(path, null, null) { storage.read(path) }
+        val source = StorageLocalFile(storage, FileEntry(path, null))
         target.outputStream().use { output ->
-            source
-                .toSyncFile()
-                .copyTo(output)
+            source.copyTo(output)
         }
     }
 

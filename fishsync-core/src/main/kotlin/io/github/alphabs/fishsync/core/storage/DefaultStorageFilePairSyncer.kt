@@ -1,7 +1,9 @@
 package io.github.alphabs.fishsync.core.storage
 
+import io.github.alphabs.fishsync.core.ChecksumAlgorithms
+import io.github.alphabs.fishsync.core.filecomparers.ChecksumMetadataValidator
+import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -18,10 +20,13 @@ class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
     ) {
         val source = pair.source
         val targetPath = pair.target.path
+        source.metadata
+            ?.checksum
+            ?.let { ChecksumMetadataValidator.validate(it, "source") }
 
         storage.prepare(targetPath).use { pending ->
             val copied =
-                source.open().use { input ->
+                source.openReadStream().use { input ->
                     pending.output().use { output ->
                         copySource(source, input, output, onProgress)
                     }
@@ -36,36 +41,59 @@ class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
     }
 
     private suspend fun copySource(
-        source: SourceFile,
+        source: SyncFile,
         input: InputStream,
         output: OutputStream,
         onProgress: (SyncProgress) -> Unit,
     ): Long {
         var copied = 0L
+        val total =
+            source.metadata
+                ?.size
+                ?.takeIf { it >= 0 }
+
         StreamProgressHelper.copyStreamWithProgressPerBuffer(input, output, 65536) { count ->
             copied += count
-            onProgress(SyncProgress(source.path, "transfer", copied, source.size))
+            onProgress(
+                SyncProgress(
+                    source.path.subPath,
+                    "transfer",
+                    copied,
+                    total,
+                ),
+            )
         }
 
         return copied
     }
 
     private suspend fun verifyTransfer(
-        source: SourceFile,
+        source: SyncFile,
         pending: PendingWrite,
         copied: Long,
     ) {
-        if (source.size != null && source.size != copied) {
-            throw IntegrityException(source.path)
+        val size =
+            source.metadata
+                ?.size
+                ?.takeIf { it >= 0 }
+        if (size != null && size != copied) {
+            throw IntegrityException(source.path.subPath)
         }
 
-        val expected = source.checksum ?: return
+        val expected =
+            source.metadata
+                ?.checksum ?: return
         val actual =
             pending
                 .input()
-                .use { hash(it, expected.algorithm) }
-        if (!actual.equals(expected.hex, true)) {
-            throw IntegrityException(source.path)
+                .use {
+                    ChecksumAlgorithms.computeHashAsync(
+                        requireNotNull(expected.algorithmName),
+                        it,
+                    )
+                }
+        if (!actual.equals(expected.checksumHexString, true)) {
+            throw IntegrityException(source.path.subPath)
         }
     }
 }

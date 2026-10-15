@@ -1,8 +1,9 @@
 package io.github.alphabs.fishsync.core.storage
 
+import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.PathOptions
+import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.internals.OrdinalCase
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import io.github.alphabs.fishsync.core.storage.relativePath
@@ -29,7 +30,7 @@ class StorageSyncer(
     val progress = events.asSharedFlow()
 
     suspend fun compareFiles(
-        sources: List<SourceFile>,
+        sources: List<SyncFile>,
         storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
@@ -39,7 +40,7 @@ class StorageSyncer(
         }
 
     suspend fun compareAndSyncFiles(
-        sources: List<SourceFile>,
+        sources: List<SyncFile>,
         storage: WritableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
@@ -73,7 +74,7 @@ class StorageSyncer(
     }
 
     private suspend fun compareInternal(
-        sources: List<SourceFile>,
+        sources: List<SyncFile>,
         storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext,
@@ -83,7 +84,7 @@ class StorageSyncer(
                 SyncerOptions(rules, context),
                 PathOptions(caseInsensitive = caseInsensitive),
             )
-        val sourceIndex = indexByPath(sources) { it.path }
+        val sourceIndex = indexByPath(sources) { it.path.subPath }
         val targets = indexByPath(storage.list()) { it.path }
         validateInventory(sourceIndex.keys, targets.keys, evaluator)
 
@@ -98,7 +99,7 @@ class StorageSyncer(
             )
         val compared =
             original.compareFiles(
-                sources.map { StorageSourceFile(it) },
+                sources,
                 targets.values
                     .map { StorageLocalFile(storage, it) },
                 SyncerOptions(rules, context),
@@ -167,7 +168,7 @@ class StorageSyncer(
     }
 
     private suspend fun createFingerprint(
-        sources: List<SourceFile>,
+        sources: List<SyncFile>,
         targets: Collection<FileEntry>,
         storage: ReadableSyncStorage,
         mutatedPaths: Set<String>,
@@ -178,12 +179,18 @@ class StorageSyncer(
                 .map { pathKey(it) }
                 .toSet()
 
-        for (source in sources.sortedBy { it.path }) {
-            signature.append(source.path)
+        for (source in sources.sortedBy { it.path.subPath }) {
+            signature.append(source.path.subPath)
             signature.append('\u0000')
-            signature.append(source.size)
+            signature.append(
+                source.metadata
+                    ?.size,
+            )
             signature.append('\u0000')
-            signature.append(source.checksum)
+            signature.append(
+                source.metadata
+                    ?.checksum,
+            )
             signature.append('\n')
         }
 
@@ -192,7 +199,7 @@ class StorageSyncer(
                 if (pathKey(target.path) in mutatedKeys) {
                     storage
                         .read(target.path)
-                        .use { hash(it) }
+                        .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
                 } else {
                     null
                 }
@@ -205,12 +212,12 @@ class StorageSyncer(
         return signature
             .toString()
             .byteInputStream()
-            .use { hash(it, "sha1") }
+            .use { ChecksumAlgorithms.computeHashAsync("sha1", it) }
     }
 
     private suspend fun applyPlan(
         plan: SyncPlan,
-        sources: List<SourceFile>,
+        sources: List<SyncFile>,
         storage: WritableSyncStorage,
     ): SyncResult {
         val changedKeys =
@@ -225,7 +232,7 @@ class StorageSyncer(
                     entry.path to
                         storage
                             .read(entry.path)
-                            .use { hash(it) }
+                            .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
                 }
         val targets =
             storage
@@ -237,7 +244,7 @@ class StorageSyncer(
         try {
             for (path in plan.added + plan.updated) {
                 currentCoroutineContext().ensureActive()
-                val source = sources.first { it.path == path }
+                val source = sources.first { it.path.subPath == path }
                 val targetPath = targets[pathKey(path)]?.path ?: path
 
                 val target = targets[pathKey(path)] ?: FileEntry(targetPath, null)

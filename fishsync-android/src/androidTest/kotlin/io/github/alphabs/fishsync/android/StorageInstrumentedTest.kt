@@ -3,12 +3,11 @@ package io.github.alphabs.fishsync.android
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
-import io.github.alphabs.fishsync.core.storage.Checksum
-import io.github.alphabs.fishsync.core.storage.SourceFile
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncRule
@@ -45,8 +44,8 @@ class StorageInstrumentedTest {
     private fun source(
         path: String,
         text: String,
-        checksum: Checksum? = null,
-    ) = SourceFile(
+        checksum: SyncFileChecksum? = null,
+    ) = testSyncFile(
         path,
         text.length
             .toLong(),
@@ -79,7 +78,16 @@ class StorageInstrumentedTest {
                 rules,
             )
             collectionSyncer.compareAndSyncFiles(
-                listOf(source("a/file.txt", "new", Checksum("md5", hash("new".byteInputStream())))),
+                listOf(
+                    source(
+                        "a/file.txt",
+                        "new",
+                        SyncFileChecksum(
+                            "md5",
+                            ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
+                        ),
+                    ),
+                ),
                 storage,
                 rules,
             )
@@ -110,7 +118,7 @@ class StorageInstrumentedTest {
             )
             try {
                 collectionSyncer.compareAndSyncFiles(
-                    listOf(source("file", "bad", Checksum("md5", "0".repeat(32)))),
+                    listOf(source("file", "bad", SyncFileChecksum("md5", "0".repeat(32)))),
                     storage,
                     rules,
                 )
@@ -144,7 +152,16 @@ class StorageInstrumentedTest {
                 .call(authority, "rejectRename", null, null)
             try {
                 collectionSyncer.compareAndSyncFiles(
-                    listOf(source("file", "new", Checksum("md5", hash("new".byteInputStream())))),
+                    listOf(
+                        source(
+                            "file",
+                            "new",
+                            SyncFileChecksum(
+                                "md5",
+                                ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
+                            ),
+                        ),
+                    ),
                     storage,
                     rules,
                 )

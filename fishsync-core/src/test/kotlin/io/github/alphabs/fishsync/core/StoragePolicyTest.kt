@@ -2,6 +2,7 @@ package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileSizeComparer
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.*
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
@@ -25,7 +26,8 @@ class StoragePolicyTest {
                     override fun read(path: String): java.io.InputStream =
                         error("Must not read $path")
                 }
-            val sources = listOf(SourceFile("size-only", 3, null) { error("Must not open source") })
+            val sources =
+                listOf(testSyncFile("size-only", 3, null) { error("Must not open source") })
             val rules =
                 listOf(
                     SyncRule(
@@ -58,7 +60,11 @@ class StoragePolicyTest {
                 target.writeText("old")
                 val storage = FileSyncStorage(directory)
                 val source =
-                    SourceFile("FILE", 3, Checksum("md5", "202cb962ac59075b964b07152d234b70")) {
+                    testSyncFile(
+                        "FILE",
+                        3,
+                        SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
+                    ) {
                         "123".byteInputStream()
                     }
                 val rules =

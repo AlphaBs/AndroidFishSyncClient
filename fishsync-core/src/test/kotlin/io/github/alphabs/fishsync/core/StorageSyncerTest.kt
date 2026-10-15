@@ -1,14 +1,14 @@
 package io.github.alphabs.fishsync.core
 
+import io.github.alphabs.fishsync.core.filecomparers.ChecksumMetadataValidator
+import io.github.alphabs.fishsync.core.filecomparers.FileComparerException
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileSizeComparer
-import io.github.alphabs.fishsync.core.storage.Checksum
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.IntegrityException
-import io.github.alphabs.fishsync.core.storage.SourceFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
-import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
@@ -29,8 +29,8 @@ class StorageSyncerTest {
     private fun source(
         path: String,
         text: String,
-        checksum: Checksum? = null,
-    ) = SourceFile(
+        checksum: SyncFileChecksum? = null,
+    ) = testSyncFile(
         path,
         text
             .toByteArray()
@@ -54,10 +54,13 @@ class StorageSyncerTest {
     @Test
     fun checksumContract() =
         runBlocking<Unit> {
-            assertEquals("202cb962ac59075b964b07152d234b70", hash("123".byteInputStream()))
+            assertEquals(
+                "202cb962ac59075b964b07152d234b70",
+                ChecksumAlgorithms.computeHashAsync("md5", "123".byteInputStream()),
+            )
             assertEquals(
                 "40bd001563085fc35165329ea1ff5c5ecbdbbeef",
-                hash("123".byteInputStream(), "sha1"),
+                ChecksumAlgorithms.computeHashAsync("sha1", "123".byteInputStream()),
             )
             for (invalid in listOf(
                 "",
@@ -65,11 +68,16 @@ class StorageSyncerTest {
                 "Ａ".repeat(32),
                 "a".repeat(31),
             )) {
-                assertFailsWith<IllegalArgumentException> {
-                    Checksum("md5", invalid)
+                assertFailsWith<FileComparerException> {
+                    ChecksumMetadataValidator.validate(SyncFileChecksum("md5", invalid), "source")
                 }
             }
-            assertFailsWith<IllegalStateException> { Checksum("MD5", "a".repeat(32)) }
+            assertFailsWith<FileComparerException> {
+                ChecksumMetadataValidator.validate(
+                    SyncFileChecksum("MD5", "a".repeat(32)),
+                    "source",
+                )
+            }
         }
 
     @Test
@@ -221,7 +229,13 @@ class StorageSyncerTest {
                 val failure =
                     assertFailsWith<SyncFailure> {
                         StorageSyncer().compareAndSyncFiles(
-                            listOf(source("target.txt", "bad", Checksum("md5", "0".repeat(32)))),
+                            listOf(
+                                source(
+                                    "target.txt",
+                                    "bad",
+                                    SyncFileChecksum("md5", "0".repeat(32)),
+                                ),
+                            ),
                             FileSyncStorage(dir),
                             full,
                         )
@@ -245,7 +259,7 @@ class StorageSyncerTest {
             try {
                 File(dir, "target").writeText("original")
                 val source =
-                    SourceFile("target", 99, null) { throw CancellationException("cancel") }
+                    testSyncFile("target", 99, null) { throw CancellationException("cancel") }
                 assertFailsWith<CancellationException> {
                     StorageSyncer().compareAndSyncFiles(
                         listOf(source),
@@ -273,7 +287,11 @@ class StorageSyncerTest {
             try {
                 File(dir, "remove").writeText("old")
                 val source =
-                    source("a/b.txt", "123", Checksum("md5", "202CB962AC59075B964B07152D234B70"))
+                    source(
+                        "a/b.txt",
+                        "123",
+                        SyncFileChecksum("md5", "202CB962AC59075B964B07152D234B70"),
+                    )
                 val result =
                     StorageSyncer().compareAndSyncFiles(
                         listOf(source),
@@ -346,7 +364,11 @@ class StorageSyncerTest {
                 val storage = FileSyncStorage(dir)
                 val sources =
                     listOf(
-                        source("file", "123", Checksum("md5", "202cb962ac59075b964b07152d234b70")),
+                        source(
+                            "file",
+                            "123",
+                            SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
+                        ),
                     )
                 val preview = StorageSyncer().compareFiles(sources, storage, full)
                 File(dir, "file").writeText("new")

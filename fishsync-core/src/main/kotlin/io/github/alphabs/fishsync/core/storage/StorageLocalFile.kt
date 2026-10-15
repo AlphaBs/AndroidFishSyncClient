@@ -8,7 +8,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 /** SAF 등 파일 시스템 경로가 없는 로컬 대상을 원본 비교기에 연결한다. */
-internal class StorageLocalFile(
+class StorageLocalFile(
     private val storage: ReadableSyncStorage,
     private val entry: FileEntry,
 ) : LocalSyncFile(RootedPath.fromSubPath(entry.path, PathOptions())) {
