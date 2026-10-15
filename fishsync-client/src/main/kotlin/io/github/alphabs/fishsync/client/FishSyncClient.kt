@@ -46,6 +46,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.URI
+import java.time.OffsetDateTime
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -119,12 +120,55 @@ class FishSyncClient(
         return result
     }
 
+    /** 의존 버킷을 먼저 병합하고 요청한 버킷의 파일을 우선한다. */
+    suspend fun filesRecursively(
+        id: String,
+        maxBuckets: Int = 8,
+    ): BucketFiles {
+        require(maxBuckets > 0) { "Bucket limit must be positive" }
+        val visited = linkedSetOf<String>()
+        val merged = sortedMapOf<String, RemoteFile>(String.CASE_INSENSITIVE_ORDER)
+        var root: BucketFiles? = null
+        var latest: OffsetDateTime? = null
+
+        suspend fun visit(bucketId: String) {
+            currentCoroutineContext().ensureActive()
+            if (bucketId in visited) return
+            require(visited.size < maxBuckets) { "Bucket dependency limit exceeded" }
+            visited.add(bucketId)
+            val bucket = files(bucketId)
+            if (root == null) root = bucket
+            val updated =
+                bucket.lastUpdated
+                    ?.let(OffsetDateTime::parse)
+            if (updated != null && (latest == null || updated.isAfter(latest))) {
+                latest = updated
+            }
+            for (dependency in bucket.dependencies) {
+                visit(dependency)
+            }
+            for (file in bucket.files) {
+                merged[file.path] = file
+            }
+        }
+
+        visit(id)
+        return BucketFiles(
+            id = requireNotNull(root).id ?: id,
+            lastUpdated = latest?.toString(),
+            files =
+                merged.values
+                    .toList(),
+            dependencies = visited.toList(),
+        )
+    }
+
     suspend fun pull(
         id: String,
         storage: WritableSyncStorage,
         rules: List<SyncRule> = defaultRules(),
     ): SyncFileCollectionComparerResult {
-        val sources = sources(files(id))
+        val sources = sources(filesRecursively(id))
         val progressByPath = ConcurrentHashMap<String, ByteProgress>()
         val options =
             SyncerOptions(
@@ -186,10 +230,6 @@ class FishSyncClient(
     }
 
     private fun validateRemoteFiles(result: BucketFiles) {
-        require(
-            result.dependencies
-                .isEmpty(),
-        ) { "Dependent buckets are not supported yet" }
         val seen = sortedSetOf(String.CASE_INSENSITIVE_ORDER)
 
         for (file in result.files) {
