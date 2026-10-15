@@ -5,7 +5,7 @@ import io.github.alphabs.fishsync.core.filecomparers.FileComparerException
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileSizeComparer
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
-import io.github.alphabs.fishsync.core.internals.AntPattern
+import io.github.alphabs.fishsync.core.internals.GlobPattern
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.IntegrityException
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
@@ -101,12 +101,12 @@ class StorageSyncerTest {
 
     @Test
     fun globContract() {
-        assertTrue(AntPattern("**/*.txt").matches("file.txt"))
-        assertTrue(AntPattern("**/*.txt").matches("a/b/file.txt"))
-        assertFalse(AntPattern("*.txt").matches("a/file.txt"))
-        assertTrue(AntPattern("file??.txt").matches("file2x.txt"))
-        assertTrue(AntPattern("**/config.*", true).matches("A/CONFIG.JSON"))
-        assertFalse(AntPattern("[broken").matches("b"))
+        assertTrue(GlobPattern("**/*.txt").matches("file.txt"))
+        assertTrue(GlobPattern("**/*.txt").matches("a/b/file.txt"))
+        assertFalse(GlobPattern("*.txt").matches("a/file.txt"))
+        assertTrue(GlobPattern("file??.txt").matches("file2x.txt"))
+        assertTrue(GlobPattern("**/config.*", true).matches("A/CONFIG.JSON"))
+        assertFalse(GlobPattern("[broken").matches("b"))
     }
 
     @Test

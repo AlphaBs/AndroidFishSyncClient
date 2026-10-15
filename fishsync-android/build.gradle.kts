@@ -7,10 +7,6 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
     namespace = "io.github.alphabs.fishsync.android"
     compileSdk = 35
-    packaging {
-        // Android는 JAR 클래스패스 인덱스를 사용하지 않는다.
-        resources.excludes += "META-INF/INDEX.LIST"
-    }
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner =

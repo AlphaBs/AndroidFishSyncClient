@@ -10,7 +10,7 @@
 | syncer | SyncPathComparer, 규칙·옵션·결과, ISyncFilePairSyncer, ParallelSyncFilePairSyncer, SyncFileCollectionSyncer, 상속형 LocalSyncer |
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
 | versions | IVersionManager, 파일 구현 VersionManager, NullVersionManager |
-| internals | 원본 경로·스트림·진행률 보조 객체 및 Ant glob 연결·스트림 진행률 보조 |
+| internals | 원본 경로·스트림·진행률 보조 객체 및 자체 glob 매처·스트림 진행률 보조 |
 | storage | 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
 
 ## 원본 계약으로 조립
@@ -54,4 +54,4 @@ VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바
 
 ## 검증
 
-테스트는 CI에서만 실행한다. 고정된 원본 소스를 체크아웃하고 .NET 비교 결과와 버전 공백 결과를 생성해 Kotlin과 대조한다. glob은 Ant 문법으로 별도 검증한다. 객체·비교 정책·병렬 실패·취소·진행률·버전 및 HTTP/SAF 계약을 테스트한다. Android 계측은 API 26과 35에서 실행하며 Debug/Release 빌드와 Android lint도 실행한다. 타입 대응표의 파일 존재와 전체 동작의 동일성 보장은 구분한다.
+테스트는 CI에서만 실행한다. 고정된 원본 소스를 체크아웃하고 .NET 비교 결과와 버전 공백 결과를 생성해 Kotlin과 대조한다. glob은 자체 문법·작은 입력의 전수 대조·긴 입력으로 별도 검증한다. 객체·비교 정책·병렬 실패·취소·진행률·버전 및 HTTP/SAF 계약을 테스트한다. Android 계측은 API 26과 35에서 실행하며 Debug/Release 빌드와 Android lint도 실행한다. 타입 대응표의 파일 존재와 전체 동작의 동일성 보장은 구분한다.

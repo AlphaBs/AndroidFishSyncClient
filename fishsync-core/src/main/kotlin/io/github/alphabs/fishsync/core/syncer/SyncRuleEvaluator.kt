@@ -2,14 +2,14 @@ package io.github.alphabs.fishsync.core.syncer
 
 import io.github.alphabs.fishsync.core.PathHelper
 import io.github.alphabs.fishsync.core.PathOptions
-import io.github.alphabs.fishsync.core.internals.AntPattern
+import io.github.alphabs.fishsync.core.internals.GlobPattern
 
 internal class SyncRuleEvaluator(
     options: SyncerOptions,
     private val pathOptions: PathOptions,
 ) {
     private val context = requireNotNull(options.context) { "Context cannot be null" }
-    private val compiled: List<Pair<SyncRule, AntPattern>>
+    private val compiled: List<Pair<SyncRule, GlobPattern>>
 
     init {
         val rules = requireNotNull(options.rules) { "Rules must be specified" }
@@ -25,7 +25,7 @@ internal class SyncRuleEvaluator(
                             rule.pattern,
                             pathOptions,
                         ).replace(pathOptions.pathSeparator, '/')
-                rule to AntPattern(pattern, pathOptions.caseInsensitive)
+                rule to GlobPattern(pattern, pathOptions.caseInsensitive)
             }
     }
 

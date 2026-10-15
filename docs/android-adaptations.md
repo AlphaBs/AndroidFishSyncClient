@@ -46,15 +46,18 @@ JVM에 대응 기능이 없는 경우와 비슷한 기능의 세부 규칙이 �
 
 Task/ValueTask, IProgress, Stream을 별도 .NET 모방 계층으로 복제하지 않는다. suspend, 타입화된 콜백, InputStream/OutputStream을 사용한다. 파일 제공자의 권한·크기 미상·이름 변경 실패·취소는 런타임 API 변환보다 실제 오류와 자원 수명을 맞추는 작업이 까다롭다.
 
-## Ant glob 정책
+## 자체 glob 정책
 
-`org.apache.ant:ant:1.10.18`의 TokenizedPattern을 사용한다. AntPattern은 구분자 정규화와 대소문자 옵션만 연결하며 자체 파싱 알고리즘은 두지 않는다. 파일 시스템 스캔 대신 문자열 매처를 사용하므로 Ant의 기본 제외 목록은 적용하지 않는다.
+내부 GlobPattern을 사용하며 외부 매처의 소스나 런타임 의존성을 포함하지 않는다. 경로 요소와 문자에 대한 동적 계획법으로 구현한다. 재귀나 백트래킹을 하지 않고 두 상태 행을 재사용한다.
 
-- `*`: 한 경로 요소 안의 0개 이상 문자. `?`: 문자 하나.
-- `**`: 디렉터리 0개 이상. `**/*.txt`는 `file.txt`와 `a/b/file.txt`를 포함한다.
-- `[ab]`, `[a-z]`, `{a,b}`는 문자 집합이나 선택 문법으로 해석하지 않는다.
-- 잘못 닫힌 대괄호 등의 DotNet.Glob 특이 동작은 유지하지 않는다.
-- glob의 대소문자 판정은 Ant에 위임한다. 예를 들어 `İ.txt` 패턴은 ignoreCase 모드에서도 `i.txt`와 일치하지 않는다. 경로 인덱스의 Kotlin 표준 String.CASE_INSENSITIVE_ORDER 및 루트 경계의 startsWith(ignoreCase)와는 특수 Unicode 판정이 다를 수 있다. 이 차이를 맞추는 별도 보정 계층은 추가하지 않는다.
+- `*`: 한 경로 요소 안의 문자 0개 이상. `?`: Kotlin Char 하나(UTF-16 코드 단위 하나). `/`를 넘지 않는다.
+- 독립된 경로 요소 `**`: 디렉터리 0개 이상. `**/*.txt`는 `file.txt`와 `a/b/file.txt`를 포함한다.
+- `a**b`처럼 요소 안에 들어간 연속 별표는 일반 `*`와 같다. 디렉터리 경계를 넘지 않는다.
+- `[ab]`, `[a-z]`, `{a,b}`는 문자 집합이나 선택 문법으로 해석하지 않는다. 별도 escape 문법도 두지 않는다.
+- 역슬래시는 슬래시로 정규화한다. 중복·마지막 구분자는 경로 요소를 늘리지 않는다.
+- 절대 패턴과 상대 경로는 일치하지 않는다. 빈 패턴은 빈 상대 경로와만 일치하며 `**`는 빈 상대 경로도 포함한다.
+- 문자 비교는 Kotlin Char.equals(ignoreCase)를 사용한다. `İ`/`i` 및 `I`/`ı`도 기본 대소문자 무시 모드에서 일치한다.
+- 최악 시간 복잡도는 패턴 길이와 경로 길이의 곱에 비례한다. 상태 메모리는 경로 요소 수와 가장 긴 파일명 길이에 비례한다. 선형 시간 매처는 아니다.
 
 ## 대소문자와 버전 공백 정책
 
@@ -78,4 +81,4 @@ DotNetWhitespace는 버전 문자열에만 유지한다. .NET String.Trim은 `U+
 - [AntPathMatcher.java:105–122](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcher.java#L105-L122): 공백 및 대소문자 처리.
 - [AntPathMatcherArrays.java:57–80](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcherArrays.java#L57-L80): 배열 구현에도 동일한 wildcard 처리.
 
-현재 Apache Ant 의존성을 유지한다. 후보의 잘못된 동작을 허용하는 호환 코드를 추가하지 않는다. 경로 구분자·문장부호에 대한 정상 동작과 Ant 고유의 Unicode glob 정책은 AntPattern의 CI 회귀 테스트로 검증한다. Kotlin 표준의 Unicode 경로 동일성·PULL/PUSH 정책은 별도 회귀 테스트로 검증한다.
+검토한 후보와 Apache Ant 의존성은 사용하지 않는다. 자체 매처의 경로 구분자·문장부호·Unicode 정책과 작은 입력의 전수 대조, 긴 입력의 회귀 검증을 CI에서 수행한다.
