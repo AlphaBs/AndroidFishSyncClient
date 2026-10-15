@@ -1,6 +1,6 @@
 # core 객체 구조
 
-원본 FishSyncClient/src의 최상위 객체와 인터페이스 이름·책임을 유지한다. 전체 원본 타입과 Kotlin 소스 파일의 대응은 [타입 대응표](upstream-type-map.md)에 기록한다. [초기 차이 감사](upstream-core-audit.md)는 이전 구현의 문제를 기록한 문서다.
+원본 FishSyncClient/src의 최상위 객체와 인터페이스 이름·책임을 유지한다. 전체 원본 타입과 Kotlin 소스 파일의 대응은 [타입 대응표](upstream-type-map.md)에 기록한다.
 
 | 패키지 | 원본 역할 |
 | --- | --- |
@@ -11,7 +11,7 @@
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
 | versions | IVersionManager, 파일 구현 VersionManager, NullVersionManager |
 | internals | 원본 경로·스트림·진행률 보조 객체 및 JVM 취소·glob 런타임 대응 |
-| storage | 기존 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
+| storage | 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
 
 ## 원본 계약으로 조립
 
@@ -42,13 +42,13 @@ syncer.deleteLocalFiles(result.deletedFiles)
 
 기본 병렬 전송기는 프로세서 수 기준 1~4개를 사용하며 병렬도를 지정할 수 있다. 큐·비교·동기화 이벤트와 바이트 델타를 제공하고 파일 상태·합계 집계 객체를 유지한다. suspend 함수와 호출 코루틴의 취소 문맥이 Task/ValueTask·CancellationToken에 대응한다.
 
-VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바이트 제한·trim·직접 쓰기를 유지하며 NullVersionManager는 항상 새 버전으로 판단한다. 기존의 원자적 버전 교체 도구 VersionState는 storage.versions 확장에 둔다.
+VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바이트 제한·trim·직접 쓰기를 유지하며 NullVersionManager는 항상 새 버전으로 판단한다.
 
 ## 앱 저장소 확장
 
-기존 서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 SourceFile·저장소를 원본 SyncFile 모델로 변환해 원본 컬렉션 비교기를 호출하고, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. StorageSyncRule은 간편 비교 설정 외에 원본 IFileComparer 객체도 직접 받을 수 있다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
+서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 SourceFile·저장소를 원본 SyncFile 모델로 변환해 원본 컬렉션 비교기를 호출하고, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. 규칙은 원본 SyncRule과 IFileComparer를 직접 사용한다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
 
-원본 core의 생성자·패키지·결과 타입이 이전 Kotlin 구현과 달라졌으므로 소비자 코드는 새 API로 다시 빌드해야 한다. [Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
+[Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
 
 ## 검증
 

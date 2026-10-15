@@ -9,7 +9,7 @@ import io.github.alphabs.fishsync.android.SafSyncStorage
 import io.github.alphabs.fishsync.client.FishSyncClient
 import io.github.alphabs.fishsync.core.storage.SyncPlan
 import io.github.alphabs.fishsync.core.storage.SyncProgress
-import io.github.alphabs.fishsync.core.storage.SyncStorage
+import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -124,7 +124,7 @@ class SyncViewModel(
         operation?.cancel()
     }
 
-    private fun storage(): SyncStorage {
+    private fun storage(): WritableSyncStorage {
         val uri = folderUri
         if (uri == null) {
             return AndroidStorage.appFiles(getApplication())
@@ -195,7 +195,7 @@ class SyncViewModel(
     private suspend fun synchronize(
         api: FishSyncClient,
         bucket: String,
-        target: SyncStorage,
+        target: WritableSyncStorage,
         preview: SyncPlan,
         push: Boolean,
     ) = coroutineScope {

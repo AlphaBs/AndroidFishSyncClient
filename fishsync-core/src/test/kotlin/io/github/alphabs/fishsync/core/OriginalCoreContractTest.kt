@@ -257,12 +257,16 @@ class OriginalCoreContractTest {
                     .toFile()
             try {
                 val manager: IVersionManager = VersionManager(File(directory, "version").path)
+                assertNull(manager.getCurrentVersion())
                 assertTrue(manager.checkNewVersion(" v1 "))
                 manager.updateVersion(" v1 ")
                 assertEquals("v1", manager.getCurrentVersion())
-                assertFalse(manager.checkNewVersion("v1"))
+                assertFalse(manager.checkNewVersion(" v1 "))
                 assertFailsWith<IllegalArgumentException> { manager.updateVersion("가".repeat(43)) }
+                assertEquals("v1", manager.getCurrentVersion())
                 val disabled: IVersionManager = NullVersionManager()
+                disabled.updateVersion("v1")
+                assertTrue(disabled.checkNewVersion("v1"))
                 assertTrue(disabled.checkNewVersion(null))
                 assertNull(disabled.getCurrentVersion())
             } finally {

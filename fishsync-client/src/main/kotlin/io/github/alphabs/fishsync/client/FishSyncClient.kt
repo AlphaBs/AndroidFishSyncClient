@@ -2,24 +2,26 @@ package io.github.alphabs.fishsync.client
 
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.RootedPath
+import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.files.SyncFileMetadata
 import io.github.alphabs.fishsync.core.storage.ChangedFileException
 import io.github.alphabs.fishsync.core.storage.Checksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
+import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
 import io.github.alphabs.fishsync.core.storage.SourceFile
-import io.github.alphabs.fishsync.core.storage.StorageLocalSyncer
-import io.github.alphabs.fishsync.core.storage.StorageSyncRule
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncPlan
 import io.github.alphabs.fishsync.core.storage.SyncProgress
 import io.github.alphabs.fishsync.core.storage.SyncResult
-import io.github.alphabs.fishsync.core.storage.SyncStorage
+import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
 import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
+import io.github.alphabs.fishsync.core.syncer.SyncCondition
+import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -121,22 +123,23 @@ class FishSyncClient(
 
     suspend fun comparePull(
         id: String,
-        storage: SyncStorage,
-        rules: List<StorageSyncRule> = defaultRules(),
+        storage: ReadableSyncStorage,
+        rules: List<SyncRule> = defaultRules(),
     ): SyncPlan {
         val sources = sources(files(id))
-        return StorageLocalSyncer(storage, collectionSyncer).compareFiles(sources, rules)
+        return collectionSyncer.compareFiles(sources, storage, rules)
     }
 
     suspend fun pull(
         id: String,
-        storage: SyncStorage,
-        rules: List<StorageSyncRule> = defaultRules(),
+        storage: WritableSyncStorage,
+        rules: List<SyncRule> = defaultRules(),
         expectedPlan: SyncPlan? = null,
     ): SyncResult {
         val sources = sources(files(id))
-        return StorageLocalSyncer(storage, collectionSyncer).compareAndSyncFiles(
+        return collectionSyncer.compareAndSyncFiles(
             sources,
+            storage,
             rules,
             expectedPlan = expectedPlan,
         )
@@ -144,7 +147,7 @@ class FishSyncClient(
 
     suspend fun comparePush(
         id: String,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
     ): SyncPlan =
         withContext(Dispatchers.IO) {
             val remote = files(id)
@@ -163,7 +166,7 @@ class FishSyncClient(
     /** 전송용 복사본은 동기화 루트 밖의 앱 전용 임시 폴더에 보관한다. */
     suspend fun push(
         id: String,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         scratchDirectory: File,
         maxRounds: Int = 10,
         expectedPlan: SyncPlan? = null,
@@ -328,7 +331,7 @@ class FishSyncClient(
 
     private suspend fun pushUnlocked(
         id: String,
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         scratchDirectory: File,
         maxRounds: Int,
         expectedPlan: SyncPlan?,
@@ -360,7 +363,7 @@ class FishSyncClient(
         }
 
     private fun validateScratchDirectory(
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         directory: File,
     ) {
         if (storage is FileSyncStorage) {
@@ -379,7 +382,7 @@ class FishSyncClient(
     }
 
     private suspend fun createUploadSnapshot(
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         directory: File,
         copies: MutableMap<String, File>,
     ): List<UploadFile> {
@@ -416,7 +419,7 @@ class FishSyncClient(
     }
 
     private suspend fun copyUploadFile(
-        storage: SyncStorage,
+        storage: ReadableSyncStorage,
         path: String,
         target: File,
     ) {
@@ -501,7 +504,15 @@ class FishSyncClient(
     }
 
     companion object {
-        fun defaultRules() = listOf(StorageSyncRule(SyncAction.FullSync))
+        fun defaultRules() =
+            listOf(
+                SyncRule(
+                    action = SyncAction.FullSync,
+                    condition = SyncCondition.Always,
+                    pattern = "**",
+                    comparer = LocalFileChecksumComparer(),
+                ),
+            )
     }
 }
 

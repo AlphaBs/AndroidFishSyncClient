@@ -2,22 +2,16 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "FishSync: Verify",
+      "label": "FishSync: Build sample",
       "type": "shell",
-      "command": "bash scripts/gradle.sh :fishsync-core:test :fishsync-client:test :sample-app:assembleDebug :sample-app:lintDebug",
-      "group": "test",
+      "command": "bash scripts/gradle.sh :sample-app:assembleDebug",
+      "group": "build",
       "problemMatcher": []
     },
     {
       "label": "FishSync: Install sample",
       "type": "shell",
       "command": "bash scripts/gradle.sh :sample-app:installDebug",
-      "problemMatcher": []
-    },
-    {
-      "label": "FishSync: Android tests",
-      "type": "shell",
-      "command": "bash scripts/gradle.sh :fishsync-android:connectedDebugAndroidTest",
       "problemMatcher": []
     },
     {

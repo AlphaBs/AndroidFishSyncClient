@@ -18,7 +18,7 @@ JDK 17과 Android SDK 35 / Build Tools 35.0.0이 필요합니다. `ANDROID_HOME`
 
 변경 검증과 테스트는 GitHub Actions에 위임합니다. CI에서 JVM 테스트, Android SAF 계측 테스트, Debug/Release 빌드와 lint를 실행합니다.
 
-이 작업 환경에서는 프로젝트 내부 JDK를 사용하는 `bash scripts/gradle.sh`도 제공합니다. 다른 JDK를 지정하려면 `FISHSYNC_JAVA_HOME`을 설정하세요. VS Code의 Run Task에서도 검증·설치·계측 테스트·모의 서버를 실행할 수 있습니다.
+이 작업 환경에서는 프로젝트 내부 JDK를 사용하는 `bash scripts/gradle.sh`도 제공합니다. 다른 JDK를 지정하려면 `FISHSYNC_JAVA_HOME`을 설정하세요. VS Code의 Run Task에서는 빌드·설치·모의 서버를 실행할 수 있습니다. 테스트는 CI에서 실행합니다.
 
 ## 코드 스타일
 
@@ -80,7 +80,6 @@ val result = client.pull(bucketId, storage, expectedPlan = plan)
 - [core 객체 구조와 확장](docs/core-architecture.md)
 - [원본 타입 대응표](docs/upstream-type-map.md)
 - [Android에서 필요한 차이](docs/android-adaptations.md)
-- [초기 원본 차이 감사 기록](docs/upstream-core-audit.md)
 - [원본 비교 계약](fixtures/comparison-contract.json)
 
 ## 라이선스

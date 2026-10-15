@@ -117,14 +117,14 @@ PUSH는 서버 비교/동기화 요청 → 필요한 HTTP 작업 수행 → 다�
 
 ## 8. 공개 API 방향
 
-서버 연결과 인증은 `FishSyncClient`, 로컬 대상은 `SyncStorage`로 전달한다. 비교는 `SyncPlan`, 실행은 `SyncResult`, 진행률은 실행별 `Flow<SyncProgress>`로 제공하는 방향을 검토한다. 다음은 확정된 구현이 아닌 사용 예시다.
+서버 연결과 인증은 `FishSyncClient`, 읽기 대상은 `ReadableSyncStorage`, 변경 대상은 `WritableSyncStorage`로 전달한다. 비교는 `SyncPlan`, 실행은 `SyncResult`, 진행률은 실행별 `Flow<SyncProgress>`로 제공하는 방향을 검토한다. 다음은 확정된 구현이 아닌 사용 예시다.
 
 ```kotlin
 val storage = SafSyncStorage(context, treeUri)
 val client = FishSyncClient(serverUrl, tokenProvider)
 val plan = client.comparePull(bucketId, storage, rules)
-val result = client.pull(bucketId, storage, rules)
-val pushResult = client.push(bucketId, storage)
+val result = client.pull(bucketId, storage, rules, expectedPlan = plan)
+val pushResult = client.push(bucketId, storage, scratchDirectory)
 ```
 
 미리보기 결과는 영구적으로 유효한 실행 권한이나 고정된 서버 상태가 아니다. 실행 전에 관련 상태를 재확인하고 달라졌으면 재비교를 요구한다. 진행 이벤트를 수집하지 않아도 동기화가 교착되지 않게 한다.

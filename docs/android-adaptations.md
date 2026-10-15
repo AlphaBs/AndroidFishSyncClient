@@ -27,8 +27,23 @@ SafSyncFile의 path는 root 없는 RootedPath다. 같은 파일의 treeUri는 �
 
 원본 LocalSyncer는 직접 대상에 쓰고 해당 규칙의 비교기로 전송 후 검증한다. 자동 삭제를 하지 않으므로 결과의 deletedFiles를 명시적으로 삭제해야 한다. 이 core 계약을 유지한다.
 
-기존 FishSyncClient·샘플 앱이 제공하는 임시 파일 검증 후 적용, 원본 백업 복구, 미리보기 fingerprint, 적용 후 삭제, 같은 루트 잠금, 부분 적용 결과와 전송 스냅샷은 storage 확장 정책이다. 이 기능들이 전부 Android 때문에 필수인 것은 아니다. 원본 core의 동작을 바꾸는 대신 별도 계층에서 제공한다.
+FishSyncClient·샘플 앱이 제공하는 임시 파일 검증 후 적용, 원본 백업 복구, 미리보기 fingerprint, 적용 후 삭제, 같은 루트 잠금, 부분 적용 결과와 전송 스냅샷은 storage 확장 정책이다. 이 기능들이 전부 Android 때문에 필수인 것은 아니다. 원본 core의 동작을 바꾸는 대신 별도 계층에서 제공한다.
 
 SafSyncFile은 제공자의 문서 생성·직접 쓰기 스트림을 사용한다. 백업이나 내부 파일 이름 예약 정책을 적용하지 않으며 원본처럼 전송 후 비교기로 검증한다. 스트림 열기에는 CancellationSignal을 연결한다. 체크섬 실패 전 원본 파일까지 보호하려면 샘플 앱이 사용하는 StorageSyncer·SafSyncStorage 경로를 사용한다.
 
 SAF의 `.fishsync-*` 임시·백업 이름 예약, 복구 정책과 프로세스 종료 후 잔여 문서 관리 역시 storage 확장 정책이다. 권한 조회 실패를 빈 폴더로 처리하지 않는다.
+
+## 포팅 시 복잡해진 부분
+
+JVM에 대응 기능이 없는 경우와 비슷한 기능의 세부 규칙이 다른 경우를 구분한다.
+
+| 구현 | 필요했던 이유 | 판단 |
+| --- | --- | --- |
+| GlobPattern | JVM PathMatcher의 glob과 DotNet.Glob 3.1.3의 토큰·매칭 규칙이 다르다. 잘못된 패턴과 경계 동작까지 맞추려고 약 250줄을 옮겼다. | 가장 큰 호환성 비용이다. 원본 패턴과 결과를 유지한다는 요구 때문에 보존한다. 패턴 문법 변경을 허용하면 표준/외부 라이브러리로 줄일 수 있지만 결과도 달라진다. |
+| OrdinalCase | Java의 대소문자 무시 비교와 .NET OrdinalIgnoreCase는 점 없는 i 등 일부 Unicode 문자의 처리가 다르다. | 비교 기능 자체는 JVM에도 있다. 호환성 보정이며 모든 Unicode 버전 간 완전 일치를 보장하는 구현은 아니다. |
+| DotNetWhitespace | Kotlin trim과 .NET String.Trim의 공백 집합이 다르다. | 버전 문자열의 원본 결과를 유지하기 위한 작은 보정이다. |
+| StreamCancellation | 일반 Java InputStream/OutputStream에는 CancellationToken을 받는 읽기·쓰기 API가 없다. 코루틴 취소만으로 blocking I/O가 멈추지 않는다. | 필요한 런타임 대응이다. 인터럽트와 close를 연결해도 제공자가 둘 다 무시하면 즉시 중단할 수 없다. |
+| ConcurrentByteProgressAggregator | 원본 ThreadLocal 집계를 그대로 쓰면 스레드를 이동하는 코루틴의 수명과 맞지 않는다. | 원자적 합계로 단순화했다. ThreadLocal 자체를 흉내 내지 않는다. |
+| NativePaths | Java File은 마지막 구분자를 없애 `file/`을 `file`로 다룰 수 있다. | 일반 파일을 잘못 읽거나 덮어쓰거나 삭제하지 않도록 필요한 파일 의미 보정이다. |
+
+Task/ValueTask, IProgress, Stream을 별도 .NET 모방 계층으로 복제하지 않는다. suspend, 타입화된 콜백, InputStream/OutputStream을 사용한다. 파일 제공자의 권한·크기 미상·이름 변경 실패·취소는 런타임 API 변환보다 실제 오류와 자원 수명을 맞추는 작업이 까다롭다.

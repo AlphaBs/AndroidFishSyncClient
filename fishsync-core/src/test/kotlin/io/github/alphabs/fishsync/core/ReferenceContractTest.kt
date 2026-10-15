@@ -1,14 +1,15 @@
 package io.github.alphabs.fishsync.core
 
+import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.storage.Checksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.SourceFile
-import io.github.alphabs.fishsync.core.storage.StorageSyncRule
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
+import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
@@ -89,20 +90,24 @@ class ReferenceContractTest {
                     val rules =
                         fixture.getValue("rules").jsonArray.map { r ->
                             val obj = r.jsonObject
-                            StorageSyncRule(
-                                SyncAction.valueOf(
+                            SyncRule(
+                                action =
+                                    SyncAction.valueOf(
+                                        obj
+                                            .getValue("action")
+                                            .jsonPrimitive.content,
+                                    ),
+                                condition =
+                                    SyncCondition.valueOf(
+                                        obj
+                                            .getValue("condition")
+                                            .jsonPrimitive.content,
+                                    ),
+                                pattern =
                                     obj
-                                        .getValue("action")
+                                        .getValue("pattern")
                                         .jsonPrimitive.content,
-                                ),
-                                obj
-                                    .getValue("pattern")
-                                    .jsonPrimitive.content,
-                                SyncCondition.valueOf(
-                                    obj
-                                        .getValue("condition")
-                                        .jsonPrimitive.content,
-                                ),
+                                comparer = LocalFileChecksumComparer(),
                             )
                         }
                     val context =

@@ -3,13 +3,15 @@ package io.github.alphabs.fishsync.android
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.storage.Checksum
 import io.github.alphabs.fishsync.core.storage.SourceFile
-import io.github.alphabs.fishsync.core.storage.StorageSyncRule
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
 import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.syncer.SyncAction
+import io.github.alphabs.fishsync.core.syncer.SyncCondition
+import io.github.alphabs.fishsync.core.syncer.SyncRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -30,7 +32,15 @@ class StorageInstrumentedTest {
             Uri.parse("content://io.github.alphabs.fishsync.test.documents/tree/root"),
         )
 
-    private val rules = listOf(StorageSyncRule(SyncAction.FullSync))
+    private val rules =
+        listOf(
+            SyncRule(
+                action = SyncAction.FullSync,
+                condition = SyncCondition.Always,
+                pattern = "**",
+                comparer = LocalFileChecksumComparer(),
+            ),
+        )
 
     private fun source(
         path: String,

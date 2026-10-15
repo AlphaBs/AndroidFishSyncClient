@@ -10,6 +10,8 @@ import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncContext
 import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
+import io.github.alphabs.fishsync.core.syncer.SyncRule
+import io.github.alphabs.fishsync.core.syncer.SyncRuleEvaluator
 import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +31,7 @@ class StorageSyncer(
     suspend fun compareFiles(
         sources: List<SourceFile>,
         storage: ReadableSyncStorage,
-        rules: List<StorageSyncRule>,
+        rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
     ): SyncPlan =
         withContext(Dispatchers.IO) {
@@ -39,7 +41,7 @@ class StorageSyncer(
     suspend fun compareAndSyncFiles(
         sources: List<SourceFile>,
         storage: WritableSyncStorage,
-        rules: List<StorageSyncRule>,
+        rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
         expectedPlan: SyncPlan? = null,
     ): SyncResult =
@@ -73,10 +75,14 @@ class StorageSyncer(
     private suspend fun compareInternal(
         sources: List<SourceFile>,
         storage: ReadableSyncStorage,
-        rules: List<StorageSyncRule>,
+        rules: List<SyncRule>,
         context: SyncContext,
     ): SyncPlan {
-        val evaluator = StorageRuleEvaluator(rules, context, caseInsensitive)
+        val evaluator =
+            SyncRuleEvaluator(
+                SyncerOptions(rules, context),
+                PathOptions(caseInsensitive = caseInsensitive),
+            )
         val sourceIndex = indexByPath(sources) { it.path }
         val targets = indexByPath(storage.list()) { it.path }
         validateInventory(sourceIndex.keys, targets.keys, evaluator)
@@ -95,7 +101,7 @@ class StorageSyncer(
                 sources.map { StorageSourceFile(it) },
                 targets.values
                     .map { StorageLocalFile(storage, it) },
-                SyncerOptions(rules.map { it.toSyncRule() }, context),
+                SyncerOptions(rules, context),
             )
         added.addAll(
             compared.addedFiles
@@ -126,7 +132,7 @@ class StorageSyncer(
     private fun validateInventory(
         sourcePaths: Set<String>,
         targetPaths: Set<String>,
-        evaluator: StorageRuleEvaluator,
+        evaluator: SyncRuleEvaluator,
     ) {
         // 전송을 시작하기 전에 전체 경로와 규칙을 검증한다.
         for (path in sourcePaths + targetPaths) {
@@ -139,19 +145,19 @@ class StorageSyncer(
                 parent = parent.substringBeforeLast('/', "")
             }
 
-            evaluator.forPath(path)
+            evaluator.evaluate(path)
         }
     }
 
     private fun findDeletedPaths(
         sourcePaths: Set<String>,
         targets: Map<String, FileEntry>,
-        evaluator: StorageRuleEvaluator,
+        evaluator: SyncRuleEvaluator,
     ): List<String> {
         val deleted = mutableListOf<String>()
 
         for ((key, target) in targets) {
-            val rule = evaluator.forPath(target.path)
+            val rule = evaluator.evaluate(target.path)
             if (key !in sourcePaths && rule.action == SyncAction.FullSync) {
                 deleted.add(target.path)
             }

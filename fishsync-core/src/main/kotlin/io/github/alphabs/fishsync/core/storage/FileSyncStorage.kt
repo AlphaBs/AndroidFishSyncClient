@@ -11,7 +11,7 @@ import java.nio.file.StandardOpenOption
 
 class FileSyncStorage(
     root: File,
-) : SyncStorage {
+) : WritableSyncStorage {
     private val root =
         root.canonicalFile
             .toPath()

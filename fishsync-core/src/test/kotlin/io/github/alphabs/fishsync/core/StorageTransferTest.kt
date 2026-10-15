@@ -1,7 +1,7 @@
 package io.github.alphabs.fishsync.core
 
+import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.storage.Checksum
-import io.github.alphabs.fishsync.core.storage.Comparison
 import io.github.alphabs.fishsync.core.storage.DefaultStorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
@@ -10,17 +10,16 @@ import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
 import io.github.alphabs.fishsync.core.storage.SourceFile
 import io.github.alphabs.fishsync.core.storage.StorageFilePair
 import io.github.alphabs.fishsync.core.storage.StorageFilePairSyncer
-import io.github.alphabs.fishsync.core.storage.StorageSyncRule
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
 import io.github.alphabs.fishsync.core.storage.SyncProgress
-import io.github.alphabs.fishsync.core.storage.SyncStorage
 import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
-import io.github.alphabs.fishsync.core.storage.versions.VersionState
-import io.github.alphabs.fishsync.core.storage.versions.VersionStore
 import io.github.alphabs.fishsync.core.syncer.SyncAction
+import io.github.alphabs.fishsync.core.syncer.SyncCondition
+import io.github.alphabs.fishsync.core.syncer.SyncRule
 import io.github.alphabs.fishsync.core.versions.IVersionManager
 import io.github.alphabs.fishsync.core.versions.NullVersionManager
+import io.github.alphabs.fishsync.core.versions.VersionManager
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.nio.file.Files
@@ -31,8 +30,16 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class CoreStructureTest {
-    private val rules = listOf(StorageSyncRule(SyncAction.FullSync))
+class StorageTransferTest {
+    private val rules =
+        listOf(
+            SyncRule(
+                action = SyncAction.FullSync,
+                condition = SyncCondition.Always,
+                pattern = "**",
+                comparer = LocalFileChecksumComparer(),
+            ),
+        )
 
     @Test
     fun injectedPairSyncerReceivesPlannedDestination() =
@@ -91,7 +98,7 @@ class CoreStructureTest {
             try {
                 val delegate = FileSyncStorage(directory)
                 val storage =
-                    object : SyncStorage by delegate {
+                    object : WritableSyncStorage by delegate {
                         override fun prepare(path: String): PendingWrite {
                             val pending = delegate.prepare(path)
                             return object : PendingWrite by pending {
@@ -119,31 +126,6 @@ class CoreStructureTest {
                         .bufferedReader()
                         .use { it.readText() },
                 )
-            } finally {
-                directory.deleteRecursively()
-            }
-        }
-
-    @Test
-    fun versionManagerImplementationsFollowTheirPolicies() =
-        runBlocking<Unit> {
-            val directory =
-                Files
-                    .createTempDirectory("version-manager-")
-                    .toFile()
-            try {
-                val manager: VersionStore = VersionState(directory.resolve("version"))
-                assertTrue(manager.isNew("v1"))
-                manager.update("v1")
-                assertEquals("v1", manager.current())
-                assertFalse(manager.isNew("v1"))
-
-                val disabled: io.github.alphabs.fishsync.core.versions.IVersionManager =
-                    NullVersionManager()
-                disabled.updateVersion("v1")
-                assertNull(disabled.getCurrentVersion())
-                assertTrue(disabled.checkNewVersion("v1"))
-                assertTrue(disabled.checkNewVersion(null))
             } finally {
                 directory.deleteRecursively()
             }

@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import java.io.InputStream
 import java.io.OutputStream
-import java.util.concurrent.atomic.AtomicBoolean
 
 /** Java 스트림에는 읽기 취소 토큰이 없으므로 취소 시 스트림을 닫아 차단된 I/O를 해제한다. */
 internal suspend fun <T> withStreamCancellation(
@@ -21,13 +20,12 @@ internal suspend fun <T> withStreamCancellation(
 ): T =
     coroutineScope {
         val context = currentCoroutineContext()
-        val finished = AtomicBoolean()
         val watcher =
             launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
                 try {
                     awaitCancellation()
                 } finally {
-                    if (!finished.get() && !context.isActive) {
+                    if (!context.isActive) {
                         runCatching { input.close() }
                         runCatching { output?.close() }
                     }
