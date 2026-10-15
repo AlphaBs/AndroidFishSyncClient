@@ -15,9 +15,11 @@ internal object DotNetWhitespace {
             '\u3000',
         )
 
-    fun trim(value: String): String =
-        value.trim { character ->
-            character in '\u0009'..'\u000D' || character in '\u2000'..'\u200A' ||
-                character in singles
-        }
+    fun trim(value: String): String = value.trim(::isWhitespace)
+
+    private fun isWhitespace(character: Char): Boolean {
+        if (character in '\u0009'..'\u000D') return true
+        if (character in '\u2000'..'\u200A') return true
+        return character in singles
+    }
 }
