@@ -7,6 +7,7 @@ import io.github.alphabs.fishsync.core.storage.*
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncRule
+import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
@@ -43,7 +44,7 @@ class StoragePolicyTest {
                         comparer = LocalFileSizeComparer(),
                     ),
                 )
-            val plan = StorageSyncer().compareFiles(sources, storage, rules)
+            val plan = StorageSyncer(storage).compareFiles(sources, SyncerOptions(rules))
             assertEquals(
                 listOf("size-only"),
                 plan.identicalFilePairs
@@ -92,8 +93,8 @@ class StoragePolicyTest {
                             comparer = LocalFileChecksumComparer(),
                         ),
                     )
-                val syncer = StorageSyncer()
-                syncer.compareAndSyncFiles(listOf(source), storage, rules)
+                val syncer = StorageSyncer(storage)
+                syncer.compareAndSyncFiles(listOf(source), SyncerOptions(rules))
                 assertEquals("123", target.readText())
                 assertEquals(
                     listOf("file"),
@@ -132,8 +133,8 @@ class StoragePolicyTest {
                         ),
                     )
                 val storage = FileSyncStorage(directory)
-                val syncer = StorageSyncer()
-                val plan = syncer.compareFiles(listOf(source), storage, rules)
+                val syncer = StorageSyncer(storage)
+                val plan = syncer.compareFiles(listOf(source), SyncerOptions(rules))
                 assertEquals(
                     listOf("I.txt"),
                     plan.updatedFilePairs
@@ -152,7 +153,7 @@ class StoragePolicyTest {
                         .sorted()
                         .isEmpty(),
                 )
-                syncer.compareAndSyncFiles(listOf(source), storage, rules)
+                syncer.compareAndSyncFiles(listOf(source), SyncerOptions(rules))
                 assertEquals("123", target.readText())
                 assertEquals(
                     listOf("ı.txt"),

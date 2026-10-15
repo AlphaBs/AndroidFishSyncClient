@@ -84,10 +84,10 @@ class SyncViewModel(
     ) = runTask {
         val api = client ?: error("로그인이 필요합니다")
         val target = storage()
-        synchronize(api, bucket, target, push)
+        val message = synchronize(api, bucket, target, push)
         mutable.value =
             mutable.value
-                .copy(message = "동기화 완료")
+                .copy(message = message)
     }
 
     fun cancel() {
@@ -151,8 +151,10 @@ class SyncViewModel(
             if (push) {
                 val scratch = File(getApplication<Application>().cacheDir, "uploads")
                 api.push(bucket, target, scratch)
+                "PUSH 완료"
             } else {
-                api.pull(bucket, target)
+                val result = api.pull(bucket, target)
+                "PULL 완료. 삭제 대상 ${result.deletedFiles.size}개는 그대로 유지했습니다."
             }
         } finally {
             progress.cancel()

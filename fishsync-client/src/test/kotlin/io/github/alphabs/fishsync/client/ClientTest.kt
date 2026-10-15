@@ -169,7 +169,7 @@ class ClientTest {
                     )
                     val api = FishSyncClient(apiUrl(server))
 
-                    assertFailsWith<PushFailure> {
+                    assertFailsWith<IllegalArgumentException> {
                         api.push("bucket", FileSyncStorage(directory), scratch)
                     }
 
@@ -210,7 +210,7 @@ class ClientTest {
                     )
                     val api = FishSyncClient(apiUrl(server))
 
-                    assertFailsWith<PushFailure> {
+                    assertFailsWith<ApiException> {
                         api.push("bucket", FileSyncStorage(directory), scratch)
                     }
 
@@ -325,7 +325,7 @@ class ClientTest {
                 try {
                     File(directory, "I.txt").writeText("123")
                     File(directory, "ı.txt").writeText("456")
-                    assertFailsWith<PushFailure> {
+                    assertFailsWith<IllegalArgumentException> {
                         FishSyncClient(apiUrl(server)).push(
                             "bucket",
                             FileSyncStorage(directory),

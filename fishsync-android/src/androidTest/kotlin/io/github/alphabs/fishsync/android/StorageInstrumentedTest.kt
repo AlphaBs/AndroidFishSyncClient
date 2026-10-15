@@ -7,10 +7,11 @@ import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
-import io.github.alphabs.fishsync.core.storage.SyncFailure
+import io.github.alphabs.fishsync.core.syncer.FileIntegrityException
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncRule
+import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -71,26 +72,25 @@ class StorageInstrumentedTest {
     fun safCreateReplaceAndDelete() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = StorageSyncer()
+            val collectionSyncer = StorageSyncer(storage)
             collectionSyncer.compareAndSyncFiles(
                 listOf(source("a/file.txt", "123"), source("extra.txt", "extra")),
-                storage,
-                rules,
+                SyncerOptions(rules),
             )
-            collectionSyncer.compareAndSyncFiles(
-                listOf(
-                    source(
-                        "a/file.txt",
-                        "new",
-                        SyncFileChecksum(
-                            "md5",
-                            ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
+            val result =
+                collectionSyncer.compareAndSyncFiles(
+                    listOf(
+                        source(
+                            "a/file.txt",
+                            "new",
+                            SyncFileChecksum(
+                                "md5",
+                                ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
+                            ),
                         ),
                     ),
-                ),
-                storage,
-                rules,
-            )
+                    SyncerOptions(rules),
+                )
             assertEquals(
                 "new",
                 storage
@@ -98,6 +98,17 @@ class StorageInstrumentedTest {
                     .bufferedReader()
                     .use { it.readText() },
             )
+            assertEquals(
+                listOf("extra.txt"),
+                result.deletedFiles
+                    .map { it.path.subPath },
+            )
+            assertTrue(
+                storage
+                    .list()
+                    .any { it.path == "extra.txt" },
+            )
+            collectionSyncer.deleteFiles(result.deletedFiles)
             assertEquals(
                 listOf("a/file.txt"),
                 storage
@@ -107,28 +118,26 @@ class StorageInstrumentedTest {
         }
 
     @Test
-    fun safCorruptTransferPreservesOriginalAndSkipsDelete() =
+    fun safCorruptTransferUsesDirectWriteAndOriginalIntegrityException() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = StorageSyncer()
+            val collectionSyncer = StorageSyncer(storage)
             collectionSyncer.compareAndSyncFiles(
                 listOf(source("file", "old"), source("extra", "keep")),
-                storage,
-                rules,
+                SyncerOptions(rules),
             )
             try {
                 collectionSyncer.compareAndSyncFiles(
                     listOf(source("file", "bad", SyncFileChecksum("md5", "0".repeat(32)))),
-                    storage,
-                    rules,
+                    SyncerOptions(rules),
                 )
                 fail("Expected failure")
             } catch (
-                _: SyncFailure,
+                _: FileIntegrityException,
             ) {
             }
             assertEquals(
-                "old",
+                "bad",
                 storage
                     .read("file")
                     .bufferedReader()
@@ -143,39 +152,37 @@ class StorageInstrumentedTest {
         }
 
     @Test
-    fun providerRenameFailurePreservesOriginal() =
+    fun directWriteDoesNotRequireProviderRename() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = StorageSyncer()
-            collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
+            val syncer = StorageSyncer(storage)
+            syncer.compareAndSyncFiles(listOf(source("file", "old")), SyncerOptions(rules))
             context.contentResolver
                 .call(authority, "rejectRename", null, null)
-            try {
-                collectionSyncer.compareAndSyncFiles(
-                    listOf(
-                        source(
-                            "file",
-                            "new",
-                            SyncFileChecksum(
-                                "md5",
-                                ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
-                            ),
-                        ),
+            val changed =
+                source(
+                    "file",
+                    "new",
+                    SyncFileChecksum(
+                        "md5",
+                        ChecksumAlgorithms.computeHashAsync("md5", "new".byteInputStream()),
                     ),
-                    storage,
-                    rules,
                 )
-                fail("Expected failure")
-            } catch (
-                _: SyncFailure,
-            ) {
-            }
+
+            syncer.compareAndSyncFiles(listOf(changed), SyncerOptions(rules))
+
             assertEquals(
-                "old",
+                "new",
                 storage
                     .read("file")
                     .bufferedReader()
                     .use { it.readText() },
+            )
+            assertEquals(
+                listOf("file"),
+                storage
+                    .list()
+                    .map { it.path },
             )
         }
 
@@ -183,12 +190,15 @@ class StorageInstrumentedTest {
     fun providerListingFailureIsNotAnEmptyFolder() =
         runBlocking<Unit> {
             val storage = storage()
-            val collectionSyncer = StorageSyncer()
-            collectionSyncer.compareAndSyncFiles(listOf(source("file", "old")), storage, rules)
+            val collectionSyncer = StorageSyncer(storage)
+            collectionSyncer.compareAndSyncFiles(
+                listOf(source("file", "old")),
+                SyncerOptions(rules),
+            )
             context.contentResolver
                 .call(authority, "rejectQuery", null, null)
             try {
-                collectionSyncer.compareAndSyncFiles(emptyList(), storage, rules)
+                collectionSyncer.compareAndSyncFiles(emptyList(), SyncerOptions(rules))
                 fail("Expected listing failure")
             } catch (
                 _: IllegalStateException,
@@ -213,10 +223,9 @@ class StorageInstrumentedTest {
                     .getInstrumentation()
                     .targetContext
             val storage = AndroidStorage.appFiles(target)
-            StorageSyncer().compareAndSyncFiles(
+            StorageSyncer(storage).compareAndSyncFiles(
                 listOf(source("한글/file.txt", "123")),
-                storage,
-                rules,
+                SyncerOptions(rules),
             )
             assertEquals(
                 "123",

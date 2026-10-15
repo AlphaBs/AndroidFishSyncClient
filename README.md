@@ -35,9 +35,9 @@ JDK 17과 Android SDK 35 / Build Tools 35.0.0이 필요합니다. `ANDROID_HOME`
 
 서버 API URL(`/api` 포함)과 로그인 정보를 입력하고 버킷을 선택합니다. 앱 전용 폴더 또는 시스템 폴더 선택기로 동기화 대상 폴더를 고릅니다. PULL/PUSH 방향을 정하고 **동기화 실행**을 누르세요.
 
-**FullSync는 대상에만 있는 파일을 삭제합니다.** PULL의 대상은 로컬 폴더이며 PUSH의 대상은 서버 버킷입니다. 테스트 버킷과 테스트 폴더에서 먼저 확인하세요. 계정 토큰은 메모리에만 보관하며 폴더 URI와 접근 권한은 앱 재시작 후에도 유지합니다.
+**PULL은 대상에만 있는 파일을 삭제 대상으로 반환합니다.** 샘플 앱은 자동으로 삭제하지 않습니다. PUSH는 서버 프로토콜에 따라 버킷을 로컬 목록에 맞추므로 서버 파일이 삭제될 수 있습니다. 테스트 버킷과 테스트 폴더에서 먼저 확인하세요. 계정 토큰은 메모리에만 보관하며 폴더 URI와 접근 권한은 앱 재시작 후에도 유지합니다.
 
-Android는 다른 앱의 `Android/data` 폴더 등 일부 위치 선택을 제한합니다. SAF 제공자에 따라 이름 변경이 지원되지 않으면 안전한 파일 교체를 거부합니다. SAF의 교체는 원자적이지 않으며 원본 백업을 통해 복구를 시도합니다.
+Android는 다른 앱의 `Android/data` 폴더 등 일부 위치 선택을 제한합니다. SAF도 원본과 같이 대상 파일에 직접 씁니다. 임시 파일 교체·백업 복구는 없으며 전송이 실패하면 대상 파일이 일부 변경될 수 있습니다.
 
 ## 로컬 모의 서버
 
@@ -53,7 +53,7 @@ python3 tools/mock-server.py
 
 | 모듈 | 역할 |
 | --- | --- |
-| `fishsync-core` | 경로·체크섬·규칙·비교·안전한 로컬 적용 |
+| `fishsync-core` | 경로·체크섬·규칙·비교·원본 동기화와 저장소 접근 어댑터 |
 | `fishsync-client` | FishSyncServer API와 스트리밍 전송 |
 | `fishsync-android` | 앱 전용 저장소·SAF 어댑터 |
 | `sample-app` | 로그인·버킷·폴더 선택과 PULL/PUSH 검증 |
@@ -61,10 +61,13 @@ python3 tools/mock-server.py
 ```kotlin
 import io.github.alphabs.fishsync.android.SafSyncStorage
 import io.github.alphabs.fishsync.client.FishSyncClient
+import io.github.alphabs.fishsync.core.storage.StorageSyncer
 
 val storage = SafSyncStorage(context, treeUri) // 시스템 선택기로 받은 URI 권한을 먼저 유지
 val client = FishSyncClient(serverUrl, tokenProvider = { sessionToken })
 val result = client.pull(bucketId, storage)
+// 삭제를 원할 때만 호출합니다.
+StorageSyncer(storage).deleteFiles(result.deletedFiles)
 ```
 
 `client.progress`는 전송 이벤트 Flow입니다. 수집하지 않아도 실행이 막히지 않습니다. `pull`/`push`는 suspend 함수이고 취소는 호출 코루틴으로 전달합니다. 스트림 I/O는 강제로 중단하지 않으므로 진행 중인 읽기·쓰기가 반환될 때까지 취소가 지연될 수 있습니다. 일반 파일에는 `FileSyncStorage`를 사용합니다. `push`에는 동기화 루트 밖의 앱 전용 임시 폴더를 전달하세요.

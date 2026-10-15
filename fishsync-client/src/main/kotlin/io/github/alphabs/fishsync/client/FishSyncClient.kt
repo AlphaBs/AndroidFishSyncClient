@@ -8,24 +8,26 @@ import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.files.SyncFileMetadata
+import io.github.alphabs.fishsync.core.progress.ByteProgress
+import io.github.alphabs.fishsync.core.progress.SyncFileByteProgress
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
 import io.github.alphabs.fishsync.core.storage.StorageLocalFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncProgress
-import io.github.alphabs.fishsync.core.storage.SyncResult
 import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionComparerResult
 import io.github.alphabs.fishsync.core.syncer.SyncRule
-import kotlinx.coroutines.CancellationException
+import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -44,14 +46,13 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.URI
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 class FishSyncClient(
     serverUrl: String,
     private val tokenProvider: () -> String? = { null },
     http: OkHttpClient = defaultHttpClient(),
-    val collectionSyncer: StorageSyncer =
-        StorageSyncer(caseInsensitive = true),
 ) {
     private val base =
         serverUrl
@@ -62,7 +63,7 @@ class FishSyncClient(
     private val json = Json { ignoreUnknownKeys = true }
     private val uploadProgress = MutableSharedFlow<SyncProgress>(extraBufferCapacity = 64)
 
-    val progress get() = merge(collectionSyncer.progress, uploadProgress)
+    val progress = uploadProgress.asSharedFlow()
 
     suspend fun login(
         username: String,
@@ -122,13 +123,24 @@ class FishSyncClient(
         id: String,
         storage: WritableSyncStorage,
         rules: List<SyncRule> = defaultRules(),
-    ): SyncResult {
+    ): SyncFileCollectionComparerResult {
         val sources = sources(files(id))
-        return collectionSyncer.compareAndSyncFiles(
-            sources,
-            storage,
-            rules,
-        )
+        val progressByPath = ConcurrentHashMap<String, ByteProgress>()
+        val options =
+            SyncerOptions(
+                rules = rules,
+                byteProgress = { event: SyncFileByteProgress ->
+                    val path = event.syncFile.path.subPath
+                    val current =
+                        progressByPath.compute(path) { _, previous ->
+                            (previous ?: ByteProgress()) + event.progress
+                        }!!
+                    uploadProgress.tryEmit(
+                        SyncProgress(path, "download", current.progressedBytes, current.totalBytes),
+                    )
+                },
+            )
+        return StorageSyncer(storage).compareAndSyncFiles(sources, options)
     }
 
     /** 전송용 복사본은 동기화 루트 밖의 앱 전용 임시 폴더에 보관한다. */
@@ -220,15 +232,10 @@ class FishSyncClient(
             validateScratchDirectory(storage, scratchDirectory)
 
             val copies = linkedMapOf<String, File>()
-            val uploaded = mutableListOf<String>()
 
             try {
                 val snapshot = createUploadSnapshot(storage, scratchDirectory, copies)
-                completePush(id, snapshot, copies, uploaded, maxRounds)
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (failure: Exception) {
-                throw PushFailure(uploaded.toList(), failure)
+                completePush(id, snapshot, copies, maxRounds)
             } finally {
                 copies.values
                     .forEach { it.delete() }
@@ -293,7 +300,6 @@ class FishSyncClient(
         id: String,
         snapshot: List<UploadFile>,
         copies: Map<String, File>,
-        uploaded: MutableList<String>,
         maxRounds: Int,
     ): PushResponse {
         val body = json.encodeToString(UploadRequest(snapshot))
@@ -316,7 +322,6 @@ class FishSyncClient(
             for (required in result.requiredActions) {
                 val upload = createUploadRequest(required, copies)
                 transport.requestText(upload, upload = true)
-                uploaded.add(required.path)
             }
         }
 

@@ -46,8 +46,3 @@ data class PushResponse(
 class ApiException(
     val status: Int,
 ) : Exception("Server request failed (HTTP $status)")
-
-class PushFailure(
-    val uploaded: List<String>,
-    cause: Throwable,
-) : Exception("PUSH failed; server changes may already be applied", cause)

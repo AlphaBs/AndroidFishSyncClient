@@ -6,7 +6,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 
 class FileSyncStorage(
@@ -62,37 +61,20 @@ class FileSyncStorage(
     override fun read(path: String): InputStream =
         Files.newInputStream(checked(path), StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)
 
-    override fun prepare(path: String): PendingWrite {
+    override fun write(path: String): OutputStream {
         val target = checked(path)
         Files.createDirectories(target.parent)
         checked(path)
-        // 임시 파일은 같은 파일 시스템을 사용하되 동기화 목록에는 포함하지 않는다.
-        val temporary = Files.createTempFile(root.parent, ".fishsync-", ".tmp")
-        return object : PendingWrite {
-            private var committed = false
-
-            override fun output(): OutputStream = Files.newOutputStream(temporary)
-
-            override fun input(): InputStream = Files.newInputStream(temporary)
-
-            override fun commit() {
-                checked(path)
-                Files.move(
-                    temporary,
-                    target,
-                    StandardCopyOption.ATOMIC_MOVE,
-                    StandardCopyOption.REPLACE_EXISTING,
-                )
-                committed = true
-            }
-
-            override fun close() {
-                if (!committed) Files.deleteIfExists(temporary)
-            }
-        }
+        return Files.newOutputStream(
+            target,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.WRITE,
+            LinkOption.NOFOLLOW_LINKS,
+        )
     }
 
     override fun delete(path: String) {
-        Files.delete(checked(path))
+        Files.deleteIfExists(checked(path))
     }
 }

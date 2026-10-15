@@ -9,7 +9,7 @@ import java.io.OutputStream
 
 /** SAF 등 파일 시스템 경로가 없는 로컬 대상을 원본 비교기에 연결한다. */
 class StorageLocalFile(
-    private val storage: ReadableSyncStorage,
+    internal val storage: ReadableSyncStorage,
     private val entry: FileEntry,
 ) : LocalSyncFile(RootedPath.fromSubPath(entry.path, PathOptions())) {
     override val exists get() =
@@ -17,13 +17,20 @@ class StorageLocalFile(
             .list()
             .any { it.path == entry.path }
     override val length get() =
-        entry.size
+        storage
+            .list()
+            .firstOrNull { it.path == entry.path }
+            ?.size
             ?: throw FileComparerException("Provider does not report file size")
     override val isReadable = true
-    override val isWritable = false
+    override val isWritable = storage is WritableSyncStorage
 
     override suspend fun openReadStream(): InputStream = storage.read(entry.path)
 
-    override suspend fun openWriteStream(): OutputStream =
-        throw UnsupportedOperationException("Use pending writes")
+    override suspend fun openWriteStream(): OutputStream {
+        val writable =
+            storage as? WritableSyncStorage
+                ?: throw UnsupportedOperationException("Read-only storage")
+        return writable.write(entry.path)
+    }
 }

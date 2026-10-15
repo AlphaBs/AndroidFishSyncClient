@@ -1,84 +1,64 @@
 package io.github.alphabs.fishsync.core
 
-import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
-import io.github.alphabs.fishsync.core.files.SyncFile
-import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.storage.DefaultStorageFilePairSyncer
-import io.github.alphabs.fishsync.core.storage.FileEntry
+import io.github.alphabs.fishsync.core.filecomparers.FileComparer
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
-import io.github.alphabs.fishsync.core.storage.PendingWrite
-import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
-import io.github.alphabs.fishsync.core.storage.StorageFilePairSyncer
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
-import io.github.alphabs.fishsync.core.storage.SyncFailure
-import io.github.alphabs.fishsync.core.storage.SyncProgress
-import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
+import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncRule
-import io.github.alphabs.fishsync.core.versions.FileVersionManager
-import io.github.alphabs.fishsync.core.versions.NullVersionManager
-import io.github.alphabs.fishsync.core.versions.VersionManager
+import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.runBlocking
+import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class StorageTransferTest {
-    private val rules =
-        listOf(
-            SyncRule(
-                action = SyncAction.FullSync,
-                condition = SyncCondition.Always,
-                pattern = "**",
-                comparer = LocalFileChecksumComparer(),
-            ),
-        )
-
     @Test
-    fun injectedPairSyncerReceivesPlannedDestination() =
+    fun transferVerificationUsesOnlyTheConfiguredComparer() =
         runBlocking<Unit> {
             val directory =
                 Files
-                    .createTempDirectory("pair-syncer-")
+                    .createTempDirectory("storage-comparer-")
                     .toFile()
             try {
-                val storage = FileSyncStorage(directory)
-                val synchronizedPaths = mutableListOf<String>()
-                val delegate = DefaultStorageFilePairSyncer()
-                val syncer =
-                    object : StorageFilePairSyncer {
-                        override suspend fun sync(
-                            pair: SyncFilePair,
-                            storage: WritableSyncStorage,
-                            onProgress: (SyncProgress) -> Unit,
-                            onApplied: (Long) -> Unit,
-                        ) {
-                            synchronizedPaths.add(pair.target.path.subPath)
-                            delegate.sync(
-                                pair,
-                                storage,
-                                onProgress,
-                                onApplied,
-                            )
-                        }
+                val target = File(directory, "file")
+                target.writeText("old")
+                var comparisons = 0
+                val comparer =
+                    FileComparer { pair ->
+                        comparisons++
+                        pair.target
+                            .openReadStream()
+                            .bufferedReader()
+                            .use { it.readText() == "new" }
                     }
-                val collectionSyncer = StorageSyncer(filePairSyncer = syncer)
-                val result = collectionSyncer.compareAndSyncFiles(listOf(source()), storage, rules)
+                // 규칙이 메타데이터 검증을 요구하지 않으면 별도 크기·체크섬 검사를 하지 않는다.
+                val source =
+                    testSyncFile("file", 99, SyncFileChecksum("md5", "0".repeat(32))) {
+                        "new".byteInputStream()
+                    }
+                val options =
+                    SyncerOptions(
+                        listOf(
+                            SyncRule(SyncAction.FullSync, SyncCondition.Always, "**", comparer),
+                        ),
+                    )
+                StorageSyncer(
+                    FileSyncStorage(directory),
+                    pairSyncer = ParallelSyncFilePairSyncer(1),
+                ).compareAndSyncFiles(listOf(source), options)
 
-                assertEquals(listOf("file.txt"), synchronizedPaths)
-                assertEquals(listOf("file.txt"), result.applied)
+                assertEquals(2, comparisons)
+                assertEquals("new", target.readText())
                 assertEquals(
-                    "123",
-                    storage
-                        .read("file.txt")
-                        .bufferedReader()
-                        .use { it.readText() },
+                    listOf("file"),
+                    directory
+                        .list()!!
+                        .toList(),
                 )
             } finally {
                 directory.deleteRecursively()
@@ -86,50 +66,65 @@ class StorageTransferTest {
         }
 
     @Test
-    fun committedFileIsReportedWhenClosingFails() =
+    fun failedDirectWritePropagatesOriginalExceptionAndKeepsDeletionCandidates() =
         runBlocking<Unit> {
             val directory =
                 Files
-                    .createTempDirectory("close-failure-")
+                    .createTempDirectory("storage-failure-")
                     .toFile()
             try {
-                val delegate = FileSyncStorage(directory)
-                val storage =
-                    object : WritableSyncStorage by delegate {
-                        override fun prepare(path: String): PendingWrite {
-                            val pending = delegate.prepare(path)
-                            return object : PendingWrite by pending {
-                                override fun close() {
-                                    pending.close()
-                                    throw IOException("Cannot close committed document")
-                                }
+                val target = File(directory, "file")
+                target.writeText("original")
+                File(directory, "extra").writeText("keep")
+                val failure = IOException("Source read failed")
+                val source =
+                    testSyncFile("file", 3, null) {
+                        object : InputStream() {
+                            private var first = true
+
+                            override fun read(): Int = throw failure
+
+                            override fun read(
+                                bytes: ByteArray,
+                                offset: Int,
+                                length: Int,
+                            ): Int {
+                                if (!first) throw failure
+                                first = false
+                                "new".toByteArray().copyInto(bytes, offset)
+                                return 3
                             }
                         }
                     }
-                val failure =
-                    assertFailsWith<SyncFailure> {
-                        StorageSyncer().compareAndSyncFiles(
-                            listOf(source()),
-                            storage,
-                            rules,
-                        )
+                val options =
+                    SyncerOptions(
+                        listOf(
+                            SyncRule(
+                                SyncAction.FullSync,
+                                SyncCondition.Always,
+                                "**",
+                                FileComparer { false },
+                            ),
+                        ),
+                    )
+                val actual =
+                    assertFailsWith<IOException> {
+                        StorageSyncer(
+                            FileSyncStorage(directory),
+                        ).compareAndSyncFiles(listOf(source), options)
                     }
 
-                assertEquals(listOf("file.txt"), failure.applied)
+                assertEquals(failure.message, actual.message)
+                assertEquals("new", target.readText())
+                assertEquals("keep", File(directory, "extra").readText())
                 assertEquals(
-                    "123",
-                    delegate
-                        .read("file.txt")
-                        .bufferedReader()
-                        .use { it.readText() },
+                    listOf("extra", "file"),
+                    directory
+                        .list()!!
+                        .sorted(),
                 )
             } finally {
                 directory.deleteRecursively()
             }
-        }
-
-    private fun source(): SyncFile =
-        testSyncFile("file.txt", 3, null) {
-            "123".byteInputStream()
         }
 }

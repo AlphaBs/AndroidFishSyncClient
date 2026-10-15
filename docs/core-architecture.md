@@ -11,7 +11,7 @@
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
 | versions | VersionManager, 파일 구현 FileVersionManager, NullVersionManager |
 | internals | 원본 경로·스트림·진행률 보조 객체 및 자체 glob 매처·스트림 진행률 보조 |
-| storage | 앱 저장소와 파일 교체 확장. 원본 API와 구분한다. |
+| storage | 일반 파일·SAF 저장소 접근을 원본 API에 연결하는 어댑터 |
 
 ## 원본 계약으로 조립
 
@@ -48,9 +48,9 @@ FileVersionManager는 VersionManager의 비동기 파일 구현이다. UTF-8 128
 
 ## 앱 저장소 확장
 
-서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 저장소 대상을 StorageLocalFile로 연결해 원본 컬렉션 비교기를 호출하며, compareFiles는 원본 SyncFileCollectionComparerResult를 그대로 반환한다. 실행은 비교 후 바로 전송·삭제한다. 규칙은 원본 SyncRule과 FileComparer를 직접 사용한다. 파일 교체에는 임시 파일 검증과 실패 시 삭제 생략 정책이 남아 있다.
+StorageSyncer는 원본 SyncFileCollectionSyncer를 상속하며, 대상 목록과 새 대상 파일을 StorageLocalFile로 연결한다. 원본 병렬 전송과 규칙의 비교기를 그대로 사용한다. WritableSyncStorage.write는 대상에 직접 쓰고 삭제는 deleteFiles를 명시적으로 호출한다. compareFiles와 compareAndSyncFiles는 원본 SyncFileCollectionComparerResult를 반환하며 별도 적용 결과나 부분 실패 예외는 없다.
 
-[Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
+[Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이와 저장소 연결 방식을 구분했다.
 
 ## 검증
 

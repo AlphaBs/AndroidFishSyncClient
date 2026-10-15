@@ -2,12 +2,13 @@ package io.github.alphabs.fishsync.core
 
 import io.github.alphabs.fishsync.core.filecomparers.LocalFileChecksumComparer
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
-import io.github.alphabs.fishsync.core.storage.FileSyncStorage
-import io.github.alphabs.fishsync.core.storage.StorageSyncer
+import io.github.alphabs.fishsync.core.syncer.LocalSyncer
+import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
 import io.github.alphabs.fishsync.core.syncer.SyncContext
 import io.github.alphabs.fishsync.core.syncer.SyncRule
+import io.github.alphabs.fishsync.core.syncer.SyncerOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
@@ -116,17 +117,22 @@ class ReferenceContractTest {
                             .getValue("context")
                             .jsonObject
                     val result =
-                        StorageSyncer().compareFiles(
+                        LocalSyncer(
+                            dir.path,
+                            PathOptions(),
+                            ParallelSyncFilePairSyncer(),
+                        ).compareFiles(
                             sources,
-                            FileSyncStorage(dir),
-                            rules,
-                            SyncContext(
-                                context["isNewVersion"]
-                                    ?.jsonPrimitive
-                                    ?.boolean ?: false,
-                                context["isForced"]
-                                    ?.jsonPrimitive
-                                    ?.boolean ?: false,
+                            SyncerOptions(
+                                rules,
+                                SyncContext(
+                                    context["isNewVersion"]
+                                        ?.jsonPrimitive
+                                        ?.boolean ?: false,
+                                    context["isForced"]
+                                        ?.jsonPrimitive
+                                        ?.boolean ?: false,
+                                ),
                             ),
                         )
                     val expected =

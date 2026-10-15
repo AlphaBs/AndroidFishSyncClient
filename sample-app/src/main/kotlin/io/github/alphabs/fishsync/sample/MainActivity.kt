@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
         addLabel("FishSync 테스트")
         addLabel(
             "PULL은 서버 → 폴더, PUSH는 폴더 → 서버입니다. " +
-                "전체 동기화는 대상에만 있는 파일을 삭제합니다.",
+                "PULL의 대상에만 있는 파일은 삭제 대상으로 반환하며 자동 삭제하지 않습니다.",
         )
     }
 
