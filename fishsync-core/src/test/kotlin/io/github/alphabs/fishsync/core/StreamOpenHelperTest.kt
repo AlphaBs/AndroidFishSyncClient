@@ -56,10 +56,13 @@ class StreamOpenHelperTest {
 
         val failure = cancelBeforeDelivery(stream)
 
-        assertSame(
-            closeFailure,
-            failure.suppressed
-                .single(),
+        // 코루틴의 스택 복구는 원래 예외를 cause로 가진 복사본을 전달할 수 있다.
+        assertTrue(
+            generateSequence<Throwable>(failure) { it.cause }
+                .any { cause ->
+                    cause.suppressed
+                        .any { it === closeFailure }
+                },
         )
     }
 
@@ -96,7 +99,10 @@ class StreamOpenHelperTest {
                     StreamOpenHelper.open { throw failure }
                 }
 
-            assertSame(failure, actual)
+            assertTrue(
+                generateSequence<Throwable>(actual) { it.cause }
+                    .any { it === failure },
+            )
         }
 
     private fun cancelBeforeDelivery(stream: Closeable): CancellationException =
