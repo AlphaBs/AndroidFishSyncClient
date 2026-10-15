@@ -15,8 +15,8 @@
 
 로컬에서 테스트를 실행하지 않는다. [GitHub Actions](https://github.com/AlphaBs/AndroidFishSyncClient/actions/workflows/build.yml)에서 다음을 검증한다.
 
-- 고정한 원본 .NET 소스로 비교 계약 9개 사례, glob 2,312개 사례, 버전 공백 8개 사례를 생성해 Kotlin 결과와 대조한다.
-- JVM 단위·HTTP·계약 테스트와 취소·병렬 실패·미리보기 보호를 검증한다.
+- 고정한 원본 .NET 소스로 비교 계약 9개 사례, 버전 공백 8개 사례를 생성해 Kotlin 결과와 대조한다.
+- Ant glob 문법과 JVM 단위·HTTP·계약 테스트, 협력적 취소·병렬 실패·미리보기 보호를 검증한다.
 - Android API 26과 35에서 앱 전용 경로, SAF 생성·교체·삭제, 원본 비교기 연결, 내부 이름 정책 분리와 제공자 실패를 계측한다.
 - Kotlin 스타일, Debug/Release 앱 빌드와 Android lint를 실행한다.
 
@@ -28,6 +28,8 @@
 - 의존 버킷은 명시적으로 거부한다. 재귀 병합과 우선순위 처리는 후속 작업이다.
 - 서버 HTTP 업로드 작업은 PUT/POST를 지원한다. 다른 타입은 오류로 반환한다.
 - 버킷 제한은 조회할 수 있으나 UI 한도 표시와 사전 제한 검증은 아직 없다.
+- glob은 Apache Ant의 `*`, `?`, `**` 문법을 따른다. DotNet.Glob의 문자 집합과 특이 동작은 복제하지 않는다.
+- 스트림 읽기·쓰기를 강제로 중단하지 않는다. blocking I/O 반환까지 취소가 지연될 수 있다.
 - PULL은 파일별 적용이며 전체 롤백을 보장하지 않는다. 취소 전에 적용한 파일은 남을 수 있다.
 - SafSyncFile은 직접 쓰기와 원본 검증을 사용한다. SafSyncStorage는 백업 복구를 추가하지만 제공자의 교체 원자성을 보장하지 않는다.
 - SafSyncStorage의 `.fishsync-*` 이름은 내부 작업용으로 예약한다. 프로세스 종료 후 잔여 백업·임시 문서의 자동 정리는 아직 없다.

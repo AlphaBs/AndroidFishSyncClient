@@ -3,12 +3,6 @@ package io.github.alphabs.fishsync.core.files
 import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
 import io.github.alphabs.fishsync.core.progress.ByteProgress
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -64,23 +58,12 @@ open class ReadableHttpSyncFile(
         try {
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: error("Empty HTTP body")
-            val watcher =
-                CoroutineScope(
-                    currentCoroutineContext(),
-                ).launch(start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        awaitCancellation()
-                    } finally {
-                        call.cancel()
-                    }
-                }
             return ResponseStream(
                 body.byteStream(),
                 response,
                 body
                     .contentLength()
                     .takeIf { it >= 0 },
-                watcher,
             )
         } catch (failure: Throwable) {
             response.close()
@@ -112,14 +95,9 @@ open class ReadableHttpSyncFile(
         input: InputStream,
         private val response: Response,
         val contentLength: Long?,
-        private val watcher: Job,
     ) : FilterInputStream(input) {
         override fun close() {
-            try {
-                response.close()
-            } finally {
-                watcher.cancel()
-            }
+            response.close()
         }
     }
 }

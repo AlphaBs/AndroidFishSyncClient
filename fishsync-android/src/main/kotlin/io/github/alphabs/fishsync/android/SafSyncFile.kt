@@ -2,7 +2,6 @@ package io.github.alphabs.fishsync.android
 
 import android.content.Context
 import android.net.Uri
-import android.os.CancellationSignal
 import io.github.alphabs.fishsync.android.internals.SafFileAccess
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.RootedPath
@@ -34,18 +33,15 @@ class SafSyncFile(
     override val isReadable = true
     override val isWritable = true
 
-    override suspend fun openReadStream(): InputStream = open { files.openRead(documentPath, it) }
+    override suspend fun openReadStream(): InputStream = open { files.openRead(documentPath) }
 
-    override suspend fun openWriteStream(): OutputStream =
-        open { files.openWrite(documentPath, it) }
+    override suspend fun openWriteStream(): OutputStream = open { files.openWrite(documentPath) }
 
-    private suspend fun <T : Closeable> open(operation: (CancellationSignal) -> T): T =
+    private suspend fun <T : Closeable> open(operation: () -> T): T =
         suspendCancellableCoroutine { continuation ->
-            val signal = CancellationSignal()
-            continuation.invokeOnCancellation { signal.cancel() }
             CoroutineScope(continuation.context).launch(Dispatchers.IO) {
                 try {
-                    val stream = operation(signal)
+                    val stream = operation()
                     continuation.resume(stream) { _, value, _ -> value.close() }
                 } catch (failure: Throwable) {
                     if (continuation.isActive) continuation.resumeWithException(failure)

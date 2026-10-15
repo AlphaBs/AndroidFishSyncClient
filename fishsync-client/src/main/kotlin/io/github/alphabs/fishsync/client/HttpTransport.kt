@@ -1,12 +1,8 @@
 package io.github.alphabs.fishsync.client
 
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -33,30 +29,14 @@ internal class HttpTransport(
         request: Request,
         upload: Boolean = false,
     ): String =
-        coroutineScope {
-            val (call, response) = awaitHeaders(request, upload)
-            val watcher =
-                launch(start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        awaitCancellation()
-                    } finally {
-                        call.cancel()
-                    }
-                }
-
-            try {
-                withContext(Dispatchers.IO) {
-                    response.use { readResponse(it) }
-                }
-            } finally {
-                watcher.cancel()
-            }
+        withContext(Dispatchers.IO) {
+            awaitHeaders(request, upload).use { readResponse(it) }
         }
 
     private suspend fun awaitHeaders(
         request: Request,
         upload: Boolean = false,
-    ): Pair<Call, Response> {
+    ): Response {
         val client = if (upload) uploadHttp else http
         val call = client.newCall(request)
         val response =
@@ -89,7 +69,7 @@ internal class HttpTransport(
                 )
             }
 
-        return call to response
+        return response
     }
 
     private suspend fun readResponse(response: Response): String {

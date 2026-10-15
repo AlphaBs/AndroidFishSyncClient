@@ -2,7 +2,6 @@ package io.github.alphabs.fishsync.android.internals
 
 import android.content.Context
 import android.net.Uri
-import android.os.CancellationSignal
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import io.github.alphabs.fishsync.core.filecomparers.FileComparerException
@@ -73,14 +72,11 @@ internal class SafFileAccess(
         }
     }
 
-    fun openRead(
-        path: String,
-        signal: CancellationSignal,
-    ): InputStream {
-        val file = find(path, false, signal) ?: throw FileNotFoundException(path)
+    fun openRead(path: String): InputStream {
+        val file = find(path, false) ?: throw FileNotFoundException(path)
         check(file.isFile)
         val descriptor =
-            resolver.openAssetFileDescriptor(file.uri, "r", signal)
+            resolver.openAssetFileDescriptor(file.uri, "r")
                 ?: throw IOException("Cannot open document")
         try {
             return descriptor.createInputStream()
@@ -90,14 +86,11 @@ internal class SafFileAccess(
         }
     }
 
-    fun openWrite(
-        path: String,
-        signal: CancellationSignal,
-    ): OutputStream {
-        val file = find(path, true, signal) ?: throw IOException("Cannot create document")
+    fun openWrite(path: String): OutputStream {
+        val file = find(path, true) ?: throw IOException("Cannot create document")
         check(file.isFile)
         val descriptor =
-            resolver.openAssetFileDescriptor(file.uri, "wt", signal)
+            resolver.openAssetFileDescriptor(file.uri, "wt")
                 ?: throw IOException("Cannot write document")
         try {
             return descriptor.createOutputStream()
@@ -127,15 +120,13 @@ internal class SafFileAccess(
     private fun find(
         path: String,
         create: Boolean,
-        signal: CancellationSignal? = null,
     ): DocumentFile? {
         requireRoot()
         val parts = path.split('/')
         parts.forEach(::validateName)
         var current = root
         for ((index, name) in parts.withIndex()) {
-            signal?.throwIfCanceled()
-            val matches = children(current, signal).filter { it.name == name }
+            val matches = children(current).filter { it.name == name }
             check(matches.size <= 1) { "Ambiguous document name" }
             val child = matches.singleOrNull()
             val last = index == parts.lastIndex
@@ -164,10 +155,7 @@ internal class SafFileAccess(
         return current
     }
 
-    private fun children(
-        parent: DocumentFile,
-        signal: CancellationSignal? = null,
-    ): List<DocumentFile> {
+    private fun children(parent: DocumentFile): List<DocumentFile> {
         val uri =
             DocumentsContract.buildChildDocumentsUriUsingTree(
                 parent.uri,
@@ -175,7 +163,7 @@ internal class SafFileAccess(
             )
         val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
         val cursor =
-            resolver.query(uri, columns, null, null, null, signal)
+            resolver.query(uri, columns, null, null, null)
                 ?: throw IOException("Cannot enumerate documents")
         return cursor.use {
             val result = mutableListOf<DocumentFile>()

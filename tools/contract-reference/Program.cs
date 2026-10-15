@@ -5,9 +5,9 @@ using FishSyncClient.Files;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Syncer;
 
-if (args[0] == "--glob")
+if (args[0] == "--versions")
 {
-    await GlobContracts.Write(args[1]);
+    await VersionContracts.Write(args[1]);
     return;
 }
 

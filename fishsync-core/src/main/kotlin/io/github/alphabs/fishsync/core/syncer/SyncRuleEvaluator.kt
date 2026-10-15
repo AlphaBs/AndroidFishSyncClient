@@ -2,14 +2,14 @@ package io.github.alphabs.fishsync.core.syncer
 
 import io.github.alphabs.fishsync.core.PathHelper
 import io.github.alphabs.fishsync.core.PathOptions
-import io.github.alphabs.fishsync.core.internals.GlobPattern
+import io.github.alphabs.fishsync.core.internals.AntPattern
 
 internal class SyncRuleEvaluator(
     options: SyncerOptions,
     private val pathOptions: PathOptions,
 ) {
     private val context = requireNotNull(options.context) { "Context cannot be null" }
-    private val compiled: List<Pair<SyncRule, GlobPattern>>
+    private val compiled: List<Pair<SyncRule, AntPattern>>
 
     init {
         val rules = requireNotNull(options.rules) { "Rules must be specified" }
@@ -25,7 +25,7 @@ internal class SyncRuleEvaluator(
                             rule.pattern,
                             pathOptions,
                         ).replace(pathOptions.pathSeparator, '/')
-                rule to glob(pattern, pathOptions.caseInsensitive)
+                rule to AntPattern(pattern, pathOptions.caseInsensitive)
             }
     }
 
@@ -44,8 +44,3 @@ internal class SyncRuleEvaluator(
         throw IllegalArgumentException("No matching rule for $path")
     }
 }
-
-internal fun glob(
-    pattern: String,
-    insensitive: Boolean = false,
-): GlobPattern = GlobPattern(pattern, insensitive)

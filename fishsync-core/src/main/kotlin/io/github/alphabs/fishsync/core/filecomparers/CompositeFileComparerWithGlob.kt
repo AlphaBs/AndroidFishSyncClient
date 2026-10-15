@@ -1,19 +1,18 @@
 package io.github.alphabs.fishsync.core.filecomparers
 
 import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.internals.GlobPattern
-import io.github.alphabs.fishsync.core.syncer.glob
+import io.github.alphabs.fishsync.core.internals.AntPattern
 
 open class CompositeFileComparerWithGlob(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
 ) : IFileComparer {
-    private val comparers = mutableListOf<Pair<GlobPattern, IFileComparer>>()
+    private val comparers = mutableListOf<Pair<AntPattern, IFileComparer>>()
 
     fun add(
         pattern: String,
         comparer: IFileComparer,
     ) {
-        comparers.add(glob(pattern) to comparer)
+        comparers.add(AntPattern(pattern) to comparer)
     }
 
     override suspend fun areEqual(pair: SyncFilePair): Boolean {

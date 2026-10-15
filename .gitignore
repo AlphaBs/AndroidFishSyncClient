@@ -57,5 +57,4 @@ __pycache__/
 
 # CI upstream contracts
 .ci-upstream/
-fixtures/generated-glob-contract.json
 fixtures/generated-version-contract.json

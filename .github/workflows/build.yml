@@ -23,7 +23,7 @@ jobs:
           original="$GITHUB_WORKSPACE/.ci-upstream/FishSyncClient/src/FishSyncClient.csproj"
           dotnet run --project tools/contract-reference -p:FishSyncOriginalProject="$original" -- fixtures/comparison-contract.json /tmp/comparison-reference.json
           cmp fixtures/comparison-contract.json /tmp/comparison-reference.json
-          dotnet run --project tools/contract-reference -p:FishSyncOriginalProject="$original" -- --glob fixtures/generated-glob-contract.json
+          dotnet run --project tools/contract-reference -p:FishSyncOriginalProject="$original" -- --versions fixtures/generated-version-contract.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,7 +41,6 @@ jobs:
           path: |
             fishsync-core/build/test-results/
             fishsync-client/build/test-results/
-            fixtures/generated-glob-contract.json
             fixtures/generated-version-contract.json
 
   android-tests:
