@@ -54,7 +54,7 @@ Task/ValueTask, IProgress, Stream을 별도 .NET 모방 계층으로 복제하�
 - `**`: 디렉터리 0개 이상. `**/*.txt`는 `file.txt`와 `a/b/file.txt`를 포함한다.
 - `[ab]`, `[a-z]`, `{a,b}`는 문자 집합이나 선택 문법으로 해석하지 않는다.
 - 잘못 닫힌 대괄호 등의 DotNet.Glob 특이 동작은 유지하지 않는다.
-- Ant의 Unicode 대소문자 판정을 그대로 사용한다. 경로 인덱스는 Kotlin 표준 String.CASE_INSENSITIVE_ORDER를, 루트 경계는 startsWith(ignoreCase)를 사용한다.
+- glob의 대소문자 판정은 Ant에 위임한다. 예를 들어 `İ.txt` 패턴은 ignoreCase 모드에서도 `i.txt`와 일치하지 않는다. 경로 인덱스의 Kotlin 표준 String.CASE_INSENSITIVE_ORDER 및 루트 경계의 startsWith(ignoreCase)와는 특수 Unicode 판정이 다를 수 있다. 이 차이를 맞추는 별도 보정 계층은 추가하지 않는다.
 
 ## 대소문자와 버전 공백 정책
 
@@ -78,4 +78,4 @@ DotNetWhitespace는 버전 문자열에만 유지한다. .NET String.Trim은 `U+
 - [AntPathMatcher.java:105–122](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcher.java#L105-L122): 공백 및 대소문자 처리.
 - [AntPathMatcherArrays.java:57–80](https://github.com/azagniotov/ant-style-path-matcher/blob/d66d51908bb7f66586f0bf5384ec348105c8fbac/src/main/java/io/github/azagniotov/matcher/AntPathMatcherArrays.java#L57-L80): 배열 구현에도 동일한 wildcard 처리.
 
-현재 Apache Ant 의존성을 유지한다. 후보의 잘못된 동작을 허용하는 호환 코드를 추가하지 않는다. 경로 구분자·문장부호·Unicode 대소문자에 대한 정상 동작은 현재 AntPattern의 CI 회귀 테스트에 추가했다.
+현재 Apache Ant 의존성을 유지한다. 후보의 잘못된 동작을 허용하는 호환 코드를 추가하지 않는다. 경로 구분자·문장부호에 대한 정상 동작과 Ant 고유의 Unicode glob 정책은 AntPattern의 CI 회귀 테스트로 검증한다. Kotlin 표준의 Unicode 경로 동일성·PULL/PUSH 정책은 별도 회귀 테스트로 검증한다.

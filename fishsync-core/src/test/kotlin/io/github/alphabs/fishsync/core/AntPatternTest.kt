@@ -45,6 +45,11 @@ class AntPatternTest {
     fun insensitiveMatchingDoesNotConfuseLettersWithPunctuation() {
         assertFalse(AntPattern("A.txt", true).matches("!.txt"))
         assertTrue(AntPattern("A.txt", true).matches("a.txt"))
-        assertTrue(AntPattern("İ.txt", true).matches("i.txt"))
+    }
+
+    @Test
+    fun unicodePatternMatchingUsesAntPolicy() {
+        assertFalse(AntPattern("İ.txt", true).matches("i.txt"))
+        assertTrue(AntPattern("I.txt", true).matches("ı.txt"))
     }
 }
