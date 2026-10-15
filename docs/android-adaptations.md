@@ -10,7 +10,7 @@
 | 경로 대소문자 | PathOptions.caseInsensitive 기본값 true 유지 | Android 파일 시스템이 대소문자를 구분한다는 이유로 동기화 정책을 자동 변경하지 않는다. Kotlin 표준 String.CASE_INSENSITIVE_ORDER로 비교한다. |
 | 파일 크기 | 메타데이터가 없으면 비교기 정책에 따라 오류 처리 | 문서 제공자의 크기는 미상일 수 있다. 크기 전용 비교에서는 명확한 FileComparerException을 반환하며 0으로 꾸미지 않는다. 체크섬 비교와 스트리밍은 계속 사용할 수 있다. |
 | 취소 | 취소 전파 및 진행 중 작업을 관찰한 뒤 반환 | 버퍼 작업 사이에서 코루틴 취소를 확인한다. 읽기·쓰기를 강제로 중단하지 않으므로 blocking I/O가 반환될 때까지 취소 완료가 지연될 수 있다. |
-| 진행률 | 파일·바이트 객체, 델타와 합계 집계 | SAF는 seek/position을 지원하지 않을 수 있으므로 읽은 바이트를 직접 센다. 코루틴이 스레드를 이동하므로 합계는 ThreadLocal 대신 원자적 값으로 관리한다. |
+| 진행률 | 파일·바이트 객체, 델타와 합계 집계 | SAF는 seek/position을 지원하지 않을 수 있으므로 읽은 바이트를 직접 센다. 보고를 실행한 스레드의 ThreadLocal에 누적하고 등록한 모든 슬롯을 합산한다. 작업이 다른 스레드에서 이어져도 각 보고 값은 전체 합계에 포함된다. |
 | 디스크 I/O | 비교·동기화 결과와 오류 계약 | SAF 고수준 진입점은 Dispatchers.IO에서 제공자 조회를 실행한다. |
 | 삭제 범위 | 원본처럼 동기화와 삭제를 별도 호출 | LocalSyncer는 root를, SafSyncer.deleteSafFiles는 treeUri를 대조한다. 상대 경로가 같아도 다른 트리의 파일은 삭제하지 않는다. |
 | 파일 교체 | 스트림 열기·쓰기·닫기 계약 | SAF에는 일반 파일 시스템 rename을 적용할 수 없다. 제공자의 생성·이름 변경·삭제 API를 사용하며 원자성을 보장하지 않는다. |
@@ -39,7 +39,7 @@ JVM에 대응 기능이 없는 경우와 비슷한 기능의 세부 규칙이 �
 | --- | --- | --- |
 | DotNetWhitespace | Kotlin trim과 .NET String.Trim의 공백 집합이 다르다. | 버전 문자열의 원본 결과를 유지하기 위한 작은 보정이다. |
 | 협력적 스트림 취소 | 일반 Java InputStream/OutputStream에는 CancellationToken을 받는 읽기·쓰기 API가 없다. | 강제 취소 연결은 제거했다. 읽기·쓰기 반환 후 취소를 확인하며 진행 중인 blocking I/O는 기다린다. |
-| ConcurrentByteProgressAggregator | 원본 ThreadLocal 집계를 그대로 쓰면 스레드를 이동하는 코루틴의 수명과 맞지 않는다. | 원자적 합계로 단순화했다. ThreadLocal 자체를 흉내 내지 않는다. |
+| ConcurrentByteProgressAggregator | JVM ThreadLocal에는 .NET의 trackAllValues·Values가 없다. | ThreadLocal별 슬롯을 등록해 종료된 스레드 값까지 합산한다. 스레드 이동은 원본 전략을 바꿔야 할 이유가 아니다. |
 | NativePaths | Java File은 마지막 구분자를 없애 `file/`을 `file`로 다룰 수 있다. | 일반 파일을 잘못 읽거나 덮어쓰거나 삭제하지 않도록 필요한 파일 의미 보정이다. |
 
 Task/ValueTask, IProgress, Stream을 별도 .NET 모방 계층으로 복제하지 않는다. suspend, 타입화된 콜백, InputStream/OutputStream을 사용한다. 파일 제공자의 권한·크기 미상·이름 변경 실패·취소는 런타임 API 변환보다 실제 오류와 자원 수명을 맞추는 작업이 까다롭다.

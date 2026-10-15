@@ -42,6 +42,8 @@ syncer.deleteLocalFiles(result.deletedFiles)
 
 추상 SyncFile은 경로·불변 메타데이터·읽기·쓰기·복사 계약을 가진다. 일반 파일·HTTP·가상 파일과 파일 쌍·컬렉션은 공통 타입을 사용한다. 결과는 경로 문자열만이 아니라 파일 객체와 파일 쌍을 반환한다.
 
+ConcurrentByteProgressAggregator는 ThreadLocal별 불변 진행률 값을 갱신하고 슬롯 목록을 합산한다. 종료된 스레드의 값도 보존한다. clear는 저장소를 교체해 기존 스레드가 새 슬롯에 참여하게 하고 close는 보관한 값과 현재 스레드 연결을 해제한다. 보고 중 전체 합계는 단일 시점의 원자적 스냅샷이 아니며 clear·close와 진행 중인 보고 사이의 강한 원자성은 보장하지 않는다.
+
 기본 병렬 전송기는 프로세서 수 기준 1~4개를 사용하며 병렬도를 지정할 수 있다. 큐·비교·동기화 이벤트와 바이트 델타를 제공하고 파일 상태·합계 집계 객체를 유지한다. suspend 함수와 호출 코루틴의 취소 문맥이 Task/ValueTask·CancellationToken에 대응한다.
 
 FileVersionManager는 VersionManager의 비동기 파일 구현이다. UTF-8 128바이트 제한·trim·직접 쓰기를 유지하며 NullVersionManager는 항상 새 버전으로 판단한다.

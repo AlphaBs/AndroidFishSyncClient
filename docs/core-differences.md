@@ -30,7 +30,7 @@
 
 근거: [Kotlin 컬렉션 동기화기](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/SyncFileCollectionSyncer.kt), [병렬 전송기](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/syncer/ParallelSyncFilePairSyncer.kt), [로컬 체크섬 비교기](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/filecomparers/LocalFileChecksumComparer.kt).
 
-## 의도적으로 선택한 동작 차이
+## 의도적으로 선택한 동작 차이와 후속 반영
 
 | 항목 | .NET | Kotlin | 영향 |
 | --- | --- | --- | --- |
@@ -38,9 +38,11 @@
 | glob 문법 | 문자 집합 등 추가 문법 지원 | `*`, `?`, 독립된 `**` | `[a-z]` 같은 원본 규칙을 그대로 가져오면 의미가 달라진다. 대괄호·중괄호는 일반 문자다. |
 | 대소문자 비교 | StringComparer.OrdinalIgnoreCase와 StringComparison.OrdinalIgnoreCase | String.CASE_INSENSITIVE_ORDER, String/Char의 ignoreCase | Unicode 이름의 동일성·중복 판정이 달라질 수 있다. Kotlin은 `I`/`ı`, `İ`/`i`도 대소문자 무시 시 같은 이름으로 취급한다. |
 | 스트림 취소 | ReadAsync·WriteAsync 등에 CancellationToken 전달 | 버퍼 작업 사이에서 코루틴 취소 확인 | blocking I/O가 반환될 때까지 취소가 늦어질 수 있다. 강제 인터럽트·자동 닫기는 하지 않는다. |
-| 진행률 누적 | 스레드별 값을 ThreadLocal에 누적 | AtomicReference의 합계를 갱신 | 스레드를 이동하는 코루틴에 맞춘 구현이다. 동시 집계·초기화의 세부 시점은 같지 않다. |
+| 진행률 누적 | 스레드별 값을 ThreadLocal에 누적 | ThreadLocal과 슬롯 목록에 누적 | 후속 변경에서 원본 전략으로 맞췄다. JVM에는 Values가 없어 등록한 슬롯을 직접 합산한다. 전체 슬롯을 같은 시점의 원자적 스냅샷으로 읽지는 않는다. |
 
 glob의 `*`·`?`는 경로 요소 안에서만 일치한다. 경로 요소 전체가 `**`일 때만 디렉터리 경계를 넘는다. `ab**cd`나 `***`는 하나의 경로 요소 안에서 처리한다. 재귀·백트래킹과 외부 matcher 의존성을 사용하지 않는다.
+
+후속 로컬 벤치마크에서 다중 스레드 보고 성능을 확인한 뒤 ThreadLocal로 변경했다. 원본도 작업의 스레드 이동 시 누적값을 잃지 않으므로 AtomicReference 전환이 비동기 실행에 필수라는 이전 설명은 잘못됐다. 상세 측정 자료는 로컬 벤치마크 문서에 보관한다.
 
 버전 문자열의 Unicode 공백 보정은 제거하지 않았다. [DotNetWhitespace](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/internals/DotNetWhitespace.kt)는 .NET String.Trim의 공백 집합을 유지하기 위한 작은 보조 구현이다. 대소문자 비교의 .NET 보정 제거와는 별개다.
 
@@ -105,7 +107,7 @@ Content-Length가 있으면 등록된 메타데이터 크기와의 차이를 진
 - 목록 복사는 항목 객체 자체의 깊은 복사가 아니다. 기존 항목의 progress·eventType 변경은 보관한 항목 객체에서도 보인다.
 - Kotlin의 SyncFileProgressCollection.iterator도 항목을 리스트로 변환한다. 원본의 Dictionary 열거와 수정 중 열거 동작까지 같지는 않다.
 - FileProgressEvent, SyncFileByteProgress와 중첩된 SyncFileProgressItem은 원본에서 일반 클래스지만 Kotlin에서는 data class다. 별도 객체라도 필드 값이 같을 때 equals 결과가 달라질 수 있다.
-- ConcurrentByteProgressAggregator.close는 Kotlin에서 아무 작업도 하지 않는다. 원본 Dispose는 ThreadLocal을 폐기한다. 폐기 이후 사용까지 같은 수명 계약은 아니다.
+- 후속 ThreadLocal 구현에서 clear는 새 저장소로 교체하고 close는 저장소·슬롯 목록·현재 스레드의 연결을 해제한다. close 후 report·aggregateProgress는 거부하며 clear로 새 저장소를 만들 수 있다. 다른 스레드의 ThreadLocal 엔트리 정리 시점은 JVM에 의존하므로 .NET Dispose의 내부 자원 해제와 완전히 같지는 않다.
 
 근거: [Kotlin 파일 진행률 컬렉션](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/progress/SyncFileProgressCollection.kt), [원본 파일 진행률 컬렉션](https://github.com/AlphaBs/FishSyncClient/blob/f7dad08cf62ca23c1feec44bafe576c4da1b2bce/src/Progress/SyncFileProgressCollection.cs).
 
