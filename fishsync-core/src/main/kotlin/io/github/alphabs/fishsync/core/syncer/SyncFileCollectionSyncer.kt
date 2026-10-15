@@ -42,9 +42,16 @@ open class SyncFileCollectionSyncer(
         requireNotNull(options) { "Explicit sync options are required" }
         val evaluator = SyncRuleEvaluator(options, pathOptions)
         val paths = selectFiles(sources, targets, evaluator)
+        val pairs =
+            createFilePairs(paths.addedFiles)
+                .asSequence()
+                .plus(
+                    paths.duplicatedFiles
+                        .asSequence(),
+                ).asIterable()
         val compared =
             filePairSyncer.compareAndSyncFilePairs(
-                createFilePairs(paths.addedFiles) + paths.duplicatedFiles,
+                pairs,
                 ruleComparer(evaluator),
                 options.fileProgress,
                 options.byteProgress,
@@ -57,7 +64,7 @@ open class SyncFileCollectionSyncer(
         )
     }
 
-    protected open fun createFilePairs(sources: Iterable<SyncFile>): List<SyncFilePair> =
+    protected open fun createFilePairs(sources: Iterable<SyncFile>): Iterable<SyncFilePair> =
         emptyList()
 
     private suspend fun selectFiles(
@@ -69,22 +76,16 @@ open class SyncFileCollectionSyncer(
         val paths = SyncPathComparer().comparePaths(sources, targets, pathOptions)
         return SyncFilePathCompareResult(
             paths.addedFiles.filter {
-                evaluator
-                    .evaluate(it.path.subPath)
-                    .action !=
-                    SyncAction.Exclude
+                val rule = evaluator.evaluate(it.path.subPath)
+                rule.action != SyncAction.Exclude
             },
             paths.duplicatedFiles.filter {
-                evaluator
-                    .evaluate(it.source.path.subPath)
-                    .action in
-                    listOf(SyncAction.FullSync, SyncAction.UpdateOnly)
+                val rule = evaluator.evaluate(it.source.path.subPath)
+                rule.action == SyncAction.FullSync || rule.action == SyncAction.UpdateOnly
             },
             paths.deletedFiles.filter {
-                evaluator
-                    .evaluate(it.path.subPath)
-                    .action ==
-                    SyncAction.FullSync
+                val rule = evaluator.evaluate(it.path.subPath)
+                rule.action == SyncAction.FullSync
             },
         )
     }

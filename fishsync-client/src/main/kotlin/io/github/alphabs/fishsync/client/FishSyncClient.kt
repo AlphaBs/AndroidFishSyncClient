@@ -1,5 +1,10 @@
 package io.github.alphabs.fishsync.client
 
+import io.github.alphabs.fishsync.core.PathOptions
+import io.github.alphabs.fishsync.core.RootedPath
+import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
+import io.github.alphabs.fishsync.core.files.SyncFileChecksum
+import io.github.alphabs.fishsync.core.files.SyncFileMetadata
 import io.github.alphabs.fishsync.core.hash
 import io.github.alphabs.fishsync.core.relativePath
 import io.github.alphabs.fishsync.core.storage.ChangedFileException
@@ -53,6 +58,7 @@ class FishSyncClient(
             .trimEnd('/')
             .toHttpUrl()
     private val transport = HttpTransport(http)
+    private val downloadHttp = http
     private val json = Json { ignoreUnknownKeys = true }
     private val uploadProgress = MutableSharedFlow<SyncProgress>(extraBufferCapacity = 64)
 
@@ -221,11 +227,22 @@ class FishSyncClient(
 
     private fun sources(files: BucketFiles): List<SourceFile> =
         files.files.map { file ->
+            val remote =
+                ReadableHttpSyncFile(
+                    RootedPath.fromSubPath(file.path, PathOptions()),
+                    downloadHttp,
+                )
+            remote.location = file.location
+            remote.metadata =
+                SyncFileMetadata(
+                    file.metadata.size,
+                    SyncFileChecksum("md5", file.metadata.checksum),
+                )
             SourceFile(
                 path = file.path,
                 size = file.metadata.size,
                 checksum = Checksum("md5", file.metadata.checksum),
-                open = { transport.openDownload(file.location) },
+                open = { remote.openReadStream() },
             )
         }
 

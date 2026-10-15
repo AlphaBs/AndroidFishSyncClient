@@ -54,3 +54,7 @@ __pycache__/
 
 # CI Android tooling
 .ci-android/
+
+# CI upstream contracts
+.ci-upstream/
+fixtures/generated-glob-contract.json

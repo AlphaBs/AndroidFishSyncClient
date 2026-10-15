@@ -72,30 +72,27 @@ class RootedPath private constructor(
         fun fromDirectory(
             root: String,
             options: PathOptions,
-        ): List<RootedPath> {
-            LocalPathGuard.ensureNoLinks(root)
-            val directory = File(root)
-            if (!directory.exists()) return emptyList()
-            require(directory.isDirectory)
-            val result = mutableListOf<RootedPath>()
-            val pending = ArrayDeque<File>()
-            pending.add(directory)
-            while (pending.isNotEmpty()) {
-                val current = pending.removeLast()
-                LocalPathGuard.ensureNoLinks(current.path)
-                val children = current.listFiles() ?: throw IOException("Cannot enumerate $current")
-                for (child in children) {
-                    LocalPathGuard.ensureNoLinks(child.path)
-                    if (child.isDirectory) {
-                        pending.add(
-                            child,
-                        )
-                    } else {
-                        result.add(fromFullPath(root, child.path, options))
+        ): Sequence<RootedPath> =
+            sequence {
+                LocalPathGuard.ensureNoLinks(root)
+                val directory = File(root)
+                if (!directory.isDirectory) return@sequence
+                val pending = ArrayDeque<File>()
+                pending.add(directory)
+                while (pending.isNotEmpty()) {
+                    val current = pending.removeLast()
+                    LocalPathGuard.ensureNoLinks(current.path)
+                    val children =
+                        current.listFiles() ?: throw IOException("Cannot enumerate $current")
+                    for (child in children) {
+                        LocalPathGuard.ensureNoLinks(child.path)
+                        if (child.isDirectory) {
+                            pending.add(child)
+                        } else {
+                            yield(fromFullPath(root, child.path, options))
+                        }
                     }
                 }
             }
-            return result
-        }
     }
 }

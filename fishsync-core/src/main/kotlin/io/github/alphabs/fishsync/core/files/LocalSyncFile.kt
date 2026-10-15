@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Files
 
 open class LocalSyncFile(
     path: RootedPath,
@@ -21,7 +22,7 @@ open class LocalSyncFile(
         return File(path.getFullPath()).isFile
     }
 
-    open val length: Long get() = File(path.getFullPath()).length()
+    open val length: Long get() = Files.size(File(path.getFullPath()).toPath())
     override val isReadable get() = path.isRooted
     override val isWritable get() = path.isRooted
 

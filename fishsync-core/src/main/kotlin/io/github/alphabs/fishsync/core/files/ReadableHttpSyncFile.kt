@@ -26,7 +26,7 @@ class ReadableHttpSyncFile(
     path: RootedPath,
     private val httpClient: OkHttpClient,
 ) : SyncFile(path) {
-    var uploaded: Instant = Instant.EPOCH
+    var uploaded: Instant = Instant.parse("0001-01-01T00:00:00Z")
     var location: String? = null
     override val isReadable = true
     override val isWritable = false

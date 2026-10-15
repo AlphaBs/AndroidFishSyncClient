@@ -5,6 +5,12 @@ using FishSyncClient.Files;
 using FishSyncClient.FileComparers;
 using FishSyncClient.Syncer;
 
+if (args[0] == "--glob")
+{
+    await GlobContracts.Write(args[1]);
+    return;
+}
+
 var input = await File.ReadAllTextAsync(args[0]);
 var cases = JsonNode.Parse(input)!.AsArray();
 

@@ -1,6 +1,7 @@
 package io.github.alphabs.fishsync.core
 
 import java.io.File
+import java.nio.file.Files
 
 object PathHelper {
     fun normalizeRoot(

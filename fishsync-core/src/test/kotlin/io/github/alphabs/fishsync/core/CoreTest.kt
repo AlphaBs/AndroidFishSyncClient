@@ -88,7 +88,7 @@ class CoreTest {
         assertFalse(glob("*.txt").matches("a/file.txt"))
         assertTrue(glob("file[0-9]?.txt").matches("file2x.txt"))
         assertTrue(glob("**/config.*", true).matches("A/CONFIG.JSON"))
-        assertFails { glob("[broken") }
+        assertTrue(glob("[broken").matches("b"))
     }
 
     @Test

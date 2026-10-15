@@ -7,6 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: AlphaBs/FishSyncClient
+          ref: 79840441f8398a0934573664e58f07d9f1fe1caf
+          path: .ci-upstream/FishSyncClient
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Generate original .NET contracts
+        run: |
+          original="$GITHUB_WORKSPACE/.ci-upstream/FishSyncClient/src/FishSyncClient.csproj"
+          dotnet run --project tools/contract-reference -p:FishSyncOriginalProject="$original" -- fixtures/comparison-contract.json /tmp/comparison-reference.json
+          cmp fixtures/comparison-contract.json /tmp/comparison-reference.json
+          dotnet run --project tools/contract-reference -p:FishSyncOriginalProject="$original" -- --glob fixtures/generated-glob-contract.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -17,6 +31,14 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew checkKotlinStyle :fishsync-core:test :fishsync-client:test :fishsync-android:assembleDebug :sample-app:assembleDebug :sample-app:assembleRelease :sample-app:lintDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-contract-results
+          path: |
+            fishsync-core/build/test-results/
+            fishsync-client/build/test-results/
+            fixtures/generated-glob-contract.json
 
   android-tests:
     runs-on: ubuntu-latest

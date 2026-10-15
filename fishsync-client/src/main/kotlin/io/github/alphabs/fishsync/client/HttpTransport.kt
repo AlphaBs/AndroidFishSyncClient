@@ -1,6 +1,5 @@
 package io.github.alphabs.fishsync.client
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -12,14 +11,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.ByteArrayOutputStream
-import java.io.FilterInputStream
 import java.io.IOException
-import java.io.InputStream
 import kotlin.coroutines.resumeWithException
 
 internal class HttpTransport(
@@ -56,51 +52,6 @@ internal class HttpTransport(
                 watcher.cancel()
             }
         }
-
-    suspend fun openDownload(location: String?): InputStream {
-        // 다운로드 URL에는 API 인증 토큰을 자동으로 붙이지 않는다.
-        val url = location?.toHttpUrl() ?: error("Missing download URL")
-        val request =
-            Request
-                .Builder()
-                .url(url)
-                .build()
-        val (call, response) = awaitHeaders(request)
-
-        if (!response.isSuccessful) {
-            val code = response.code
-            response.close()
-            throw ApiException(code)
-        }
-
-        val stream =
-            response.body
-                ?.byteStream()
-        if (stream == null) {
-            response.close()
-            error("Empty download")
-        }
-
-        val watcher =
-            CoroutineScope(currentCoroutineContext())
-                .launch(start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        awaitCancellation()
-                    } finally {
-                        call.cancel()
-                    }
-                }
-
-        return object : FilterInputStream(stream) {
-            override fun close() {
-                try {
-                    response.close()
-                } finally {
-                    watcher.cancel()
-                }
-            }
-        }
-    }
 
     private suspend fun awaitHeaders(
         request: Request,

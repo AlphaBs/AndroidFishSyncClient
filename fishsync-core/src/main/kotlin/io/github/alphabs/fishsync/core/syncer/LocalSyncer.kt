@@ -33,7 +33,7 @@ class LocalSyncer(
     ): SyncFileCollectionComparerResult =
         compareAndSyncFiles(sources, enumerateLocalSyncFiles(root, pathOptions), options)
 
-    override fun createFilePairs(sources: Iterable<SyncFile>): List<SyncFilePair> =
+    override fun createFilePairs(sources: Iterable<SyncFile>): Iterable<SyncFilePair> =
         sources.map {
             SyncFilePair(
                 it,
@@ -51,7 +51,9 @@ class LocalSyncer(
                 file.path
                     .getFullPath()
             LocalPathGuard.ensureNoLinks(path)
-            Files.delete(File(path).toPath())
+            val local = File(path)
+            require(!local.isDirectory) { "Cannot delete a directory as a file" }
+            Files.deleteIfExists(local.toPath())
         }
     }
 
@@ -63,5 +65,6 @@ class LocalSyncer(
             RootedPath
                 .fromDirectory(root, options)
                 .map { LocalSyncFile(it) }
+                .asIterable()
     }
 }

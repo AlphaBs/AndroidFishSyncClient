@@ -2,13 +2,14 @@ package io.github.alphabs.fishsync.core.syncer
 
 import io.github.alphabs.fishsync.core.PathHelper
 import io.github.alphabs.fishsync.core.PathOptions
+import io.github.alphabs.fishsync.core.internals.GlobPattern
 
 internal class SyncRuleEvaluator(
     options: SyncerOptions,
     private val pathOptions: PathOptions,
 ) {
     private val context = requireNotNull(options.context) { "Context cannot be null" }
-    private val compiled: List<Pair<SyncRule, Regex>>
+    private val compiled: List<Pair<SyncRule, GlobPattern>>
 
     init {
         val rules = requireNotNull(options.rules) { "Rules must be specified" }
@@ -47,73 +48,4 @@ internal class SyncRuleEvaluator(
 internal fun glob(
     pattern: String,
     insensitive: Boolean = false,
-): Regex {
-    require(pattern.isNotEmpty() && !pattern.startsWith('/'))
-
-    val expression = GlobExpressionBuilder(pattern).build()
-    val options = if (insensitive) setOf(RegexOption.IGNORE_CASE) else emptySet()
-
-    return Regex(expression, options)
-}
-
-private class GlobExpressionBuilder(
-    pattern: String,
-) {
-    private val pattern = pattern.replace('\\', '/')
-    private val expression = StringBuilder("^")
-    private var index = 0
-
-    fun build(): String {
-        while (index < pattern.length) {
-            val character = pattern[index]
-
-            when (character) {
-                '*' -> appendWildcard()
-                '?' -> expression.append("[^/]")
-                '[' -> appendCharacterClass()
-                '{', '}' -> error("Brace glob syntax is not supported in this version")
-                else -> expression.append(Regex.escape(character.toString()))
-            }
-
-            index++
-        }
-
-        expression.append('$')
-        return expression.toString()
-    }
-
-    private fun appendWildcard() {
-        if (index + 1 >= pattern.length || pattern[index + 1] != '*') {
-            expression.append("[^/]*")
-            return
-        }
-
-        index++
-
-        if (index + 1 < pattern.length && pattern[index + 1] == '/') {
-            index++
-            expression.append("(?:.*/)?")
-        } else {
-            expression.append(".*")
-        }
-    }
-
-    private fun appendCharacterClass() {
-        val end = pattern.indexOf(']', index + 1)
-        require(end > index + 1) { "Invalid glob character class" }
-
-        val characters = pattern.substring(index + 1, end)
-        require(characters.none { it == '/' || it == '[' || it == '\\' })
-        expression.append("(?=[^/])[")
-
-        if (characters.startsWith('!')) {
-            expression.append('^')
-            expression.append(characters.drop(1))
-        } else {
-            expression.append(characters)
-        }
-
-        expression.append(']')
-        index = end
-    }
-}
+): GlobPattern = GlobPattern(pattern, insensitive)
