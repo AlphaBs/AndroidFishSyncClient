@@ -12,13 +12,14 @@ data class StorageSyncRule(
     val pattern: String = "**",
     val condition: SyncCondition = SyncCondition.Always,
     val comparison: Comparison = Comparison.Checksum,
+    val comparer: IFileComparer? = null,
 ) {
     fun toSyncRule(): SyncRule =
         SyncRule(
             action,
             condition,
             pattern,
-            when (comparison) {
+            comparer ?: when (comparison) {
                 Comparison.Size -> LocalFileSizeComparer()
                 Comparison.Checksum -> LocalFileChecksumComparer()
                 Comparison.SizeAndChecksum ->

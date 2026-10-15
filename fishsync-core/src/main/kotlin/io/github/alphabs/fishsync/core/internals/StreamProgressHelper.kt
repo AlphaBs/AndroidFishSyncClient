@@ -6,7 +6,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.InputStream
 import java.io.OutputStream
@@ -20,14 +19,17 @@ internal object StreamProgressHelper {
         destination: OutputStream,
         bufferSize: Int,
         progress: ((Long) -> Unit)?,
-    ) = withContext(Dispatchers.IO) {
-        val buffer = ByteArray(bufferSize)
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val count = source.read(buffer)
-            if (count < 0) break
-            destination.write(buffer, 0, count)
-            progress?.invoke(count.toLong())
+    ) {
+        val context = currentCoroutineContext()
+        withStreamCancellation(source, destination) {
+            val buffer = ByteArray(bufferSize)
+            while (true) {
+                context.ensureActive()
+                val count = source.read(buffer)
+                if (count < 0) break
+                destination.write(buffer, 0, count)
+                progress?.invoke(count.toLong())
+            }
         }
     }
 

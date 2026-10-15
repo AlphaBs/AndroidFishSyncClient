@@ -4,10 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
-import io.github.alphabs.fishsync.core.relativePath
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.PendingWrite
 import io.github.alphabs.fishsync.core.storage.SyncStorage
+import io.github.alphabs.fishsync.core.storage.relativePath
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID

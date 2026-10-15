@@ -4,7 +4,7 @@ import io.github.alphabs.fishsync.core.files.SyncFilePair
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-class FileChecksumMetadataComparer(
+open class FileChecksumMetadataComparer(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
 ) : IFileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean {

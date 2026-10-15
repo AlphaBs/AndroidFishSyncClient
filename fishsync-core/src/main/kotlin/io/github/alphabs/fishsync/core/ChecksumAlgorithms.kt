@@ -1,9 +1,8 @@
 package io.github.alphabs.fishsync.core
 
-import kotlinx.coroutines.Dispatchers
+import io.github.alphabs.fishsync.core.internals.withStreamCancellation
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.security.MessageDigest
 
@@ -36,17 +35,20 @@ object ChecksumAlgorithms {
     suspend fun computeHashAsync(
         algorithm: String,
         stream: InputStream,
-    ): String =
-        withContext(Dispatchers.IO) {
+    ): String {
+        val context = currentCoroutineContext()
+        context.ensureActive()
+        return withStreamCancellation(stream) {
             val digest = createHashAlgorithmFromName(algorithm)
             val buffer = ByteArray(65536)
             while (true) {
-                currentCoroutineContext().ensureActive()
+                context.ensureActive()
                 val count = stream.read(buffer)
-                currentCoroutineContext().ensureActive()
+                context.ensureActive()
                 if (count < 0) break
                 digest.update(buffer, 0, count)
             }
             HashHelper.toHexString(digest.digest())
         }
+    }
 }

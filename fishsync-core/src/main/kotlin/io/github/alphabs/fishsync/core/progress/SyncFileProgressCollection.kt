@@ -3,7 +3,7 @@ package io.github.alphabs.fishsync.core.progress
 import io.github.alphabs.fishsync.core.files.ISyncFileCollection
 import io.github.alphabs.fishsync.core.files.SyncFile
 
-class SyncFileProgressCollection(
+open class SyncFileProgressCollection(
     files: Iterable<SyncFile> = emptyList(),
 ) : AbstractCollection<SyncFile>(),
     ISyncFileCollection {

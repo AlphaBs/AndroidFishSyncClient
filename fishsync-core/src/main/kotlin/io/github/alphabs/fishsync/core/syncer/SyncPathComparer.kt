@@ -3,8 +3,9 @@ package io.github.alphabs.fishsync.core.syncer
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
+import io.github.alphabs.fishsync.core.internals.OrdinalCase
 
-class SyncPathComparer {
+open class SyncPathComparer {
     fun comparePaths(
         sources: Iterable<SyncFile>,
         targets: Iterable<SyncFile>,
@@ -48,12 +49,6 @@ class SyncPathComparer {
         options: PathOptions,
     ): String {
         if (!options.caseInsensitive) return path
-        val result = StringBuilder()
-        val points =
-            path
-                .codePoints()
-                .iterator()
-        while (points.hasNext()) result.appendCodePoint(Character.toUpperCase(points.nextInt()))
-        return result.toString()
+        return OrdinalCase.key(path)
     }
 }

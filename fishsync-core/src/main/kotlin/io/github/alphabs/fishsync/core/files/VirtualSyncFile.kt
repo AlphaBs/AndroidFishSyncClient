@@ -5,7 +5,7 @@ import io.github.alphabs.fishsync.core.progress.ByteProgress
 import java.io.InputStream
 import java.io.OutputStream
 
-class VirtualSyncFile(
+open class VirtualSyncFile(
     path: RootedPath,
     metadata: SyncFileMetadata? = null,
 ) : SyncFile(path, metadata) {

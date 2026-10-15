@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.core.progress
 
-class ByteProgressAggregator(
+open class ByteProgressAggregator(
     private val reporter: (ByteProgress) -> Unit,
 ) {
     private var currentProgress = ByteProgress()

@@ -5,8 +5,6 @@ import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.files.SyncFileMetadata
-import io.github.alphabs.fishsync.core.hash
-import io.github.alphabs.fishsync.core.relativePath
 import io.github.alphabs.fishsync.core.storage.ChangedFileException
 import io.github.alphabs.fishsync.core.storage.Checksum
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
@@ -18,7 +16,9 @@ import io.github.alphabs.fishsync.core.storage.SyncPlan
 import io.github.alphabs.fishsync.core.storage.SyncProgress
 import io.github.alphabs.fishsync.core.storage.SyncResult
 import io.github.alphabs.fishsync.core.storage.SyncStorage
+import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
+import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +43,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.net.URI
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -236,7 +237,9 @@ class FishSyncClient(
                         SyncFileChecksum("md5", file.metadata.checksum),
                     ),
                 )
-            remote.location = file.location
+            remote.location =
+                file.location
+                    ?.let(URI::create)
             SourceFile(
                 path = file.path,
                 size = file.metadata.size,
@@ -417,19 +420,11 @@ class FishSyncClient(
         path: String,
         target: File,
     ) {
-        storage.read(path).use { input ->
-            target.outputStream().use { output ->
-                val buffer = ByteArray(65536)
-
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val bytesRead = input.read(buffer)
-                    if (bytesRead < 0) {
-                        break
-                    }
-                    output.write(buffer, 0, bytesRead)
-                }
-            }
+        val source = SourceFile(path, null, null) { storage.read(path) }
+        target.outputStream().use { output ->
+            source
+                .toSyncFile()
+                .copyTo(output)
         }
     }
 

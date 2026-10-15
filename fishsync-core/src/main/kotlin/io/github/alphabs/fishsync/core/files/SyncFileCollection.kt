@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.core.files
 
-class SyncFileCollection(
+open class SyncFileCollection(
     files: Iterable<SyncFile>,
 ) : AbstractCollection<SyncFile>(),
     ISyncFileCollection {

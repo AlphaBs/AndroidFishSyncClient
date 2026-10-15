@@ -3,7 +3,7 @@ package io.github.alphabs.fishsync.core.filecomparers
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
 
-class FileSizeMetadataComparer(
+open class FileSizeMetadataComparer(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
 ) : IFileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean =

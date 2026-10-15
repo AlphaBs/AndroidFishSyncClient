@@ -10,7 +10,7 @@ import io.github.alphabs.fishsync.core.internals.LocalPathGuard
 import java.io.File
 import java.nio.file.Files
 
-class LocalSyncer(
+open class LocalSyncer(
     root: String,
     private val pathOptions: PathOptions,
     filePairSyncer: ISyncFilePairSyncer,

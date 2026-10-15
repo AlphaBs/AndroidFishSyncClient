@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.core.storage
 
-import io.github.alphabs.fishsync.core.relativePath
+import io.github.alphabs.fishsync.core.storage.relativePath
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream

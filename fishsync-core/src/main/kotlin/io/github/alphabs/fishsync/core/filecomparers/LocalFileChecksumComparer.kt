@@ -6,7 +6,7 @@ import io.github.alphabs.fishsync.core.files.SyncFilePair
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-class LocalFileChecksumComparer : IFileComparer {
+open class LocalFileChecksumComparer : IFileComparer {
     override suspend fun areEqual(pair: SyncFilePair): Boolean {
         currentCoroutineContext().ensureActive()
         val target =
@@ -20,7 +20,7 @@ class LocalFileChecksumComparer : IFileComparer {
         if (checksum == null) return true
         val actual =
             target.openReadStream().use {
-                ChecksumAlgorithms.computeHashAsync(checksum.algorithmName, it)
+                ChecksumAlgorithms.computeHashAsync(requireNotNull(checksum.algorithmName), it)
             }
         return actual.equals(checksum.checksumHexString, ignoreCase = true)
     }

@@ -9,3 +9,7 @@
 - 원본 FishSyncClient의 `Files`, `FileComparers`, `Syncer`, `Versions`, `Progress`, `Internals` 역할 구분을 유지한다.
 - Kotlin에서는 `files`, `filecomparers`, `syncer`, `versions`, `progress`, `internals` 하위 패키지와 디렉터리를 일치시킨다.
 - 인터페이스와 기본 구현은 별도 파일로 관리한다. core 루트에는 공통 경로·해시 도구만 둔다.
+
+- 원본 core의 인터페이스·구현 이름과 책임을 임의로 합치거나 축소하지 않는다.
+- 원본에 없는 앱 저장소·미리보기·안전 적용 기능은 `storage` 확장에 두며 Android의 URI·권한·경로 별칭은 Android 모듈에서 처리한다.
+- .NET 비동기 API·IProgress·Stream의 JVM 대응은 원본의 취소·진행률·자원 수명 계약을 유지한다.

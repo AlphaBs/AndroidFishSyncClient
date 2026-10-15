@@ -1,10 +1,11 @@
 package io.github.alphabs.fishsync.core.versions
 
+import io.github.alphabs.fishsync.core.internals.DotNetWhitespace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class VersionManager(
+open class VersionManager(
     private val versionPath: String,
 ) : IVersionManager {
     override suspend fun getCurrentVersion(): String? =
@@ -23,7 +24,7 @@ class VersionManager(
                     ) {
                         null
                     } else {
-                        String(bytes, 0, used, Charsets.UTF_8).trim()
+                        DotNetWhitespace.trim(String(bytes, 0, used, Charsets.UTF_8))
                     }
                 }
             } catch (_: Exception) {
@@ -32,13 +33,13 @@ class VersionManager(
         }
 
     override suspend fun checkNewVersion(sourceVersion: String?): Boolean =
-        getCurrentVersion() != sourceVersion?.trim()
+        getCurrentVersion() != sourceVersion?.let(DotNetWhitespace::trim)
 
     override suspend fun updateVersion(newVersion: String) =
         withContext(Dispatchers.IO) {
             val bytes =
-                newVersion
-                    .trim()
+                DotNetWhitespace
+                    .trim(newVersion)
                     .toByteArray(Charsets.UTF_8)
             require(bytes.size <= FILE_SIZE_LIMIT)
             File(versionPath)

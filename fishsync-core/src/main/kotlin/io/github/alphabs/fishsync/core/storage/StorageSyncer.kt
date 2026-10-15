@@ -1,10 +1,11 @@
 package io.github.alphabs.fishsync.core.storage
 
 import io.github.alphabs.fishsync.core.PathOptions
-import io.github.alphabs.fishsync.core.hash
-import io.github.alphabs.fishsync.core.relativePath
+import io.github.alphabs.fishsync.core.internals.OrdinalCase
+import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
+import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncContext
@@ -17,7 +18,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
 class StorageSyncer(
     val caseInsensitive: Boolean = true,
@@ -54,8 +54,7 @@ class StorageSyncer(
             }
         }
 
-    private fun pathKey(path: String): String =
-        if (caseInsensitive) path.lowercase(Locale.ROOT) else path
+    private fun pathKey(path: String): String = if (caseInsensitive) OrdinalCase.key(path) else path
 
     private fun <T> indexByPath(
         items: List<T>,
@@ -168,6 +167,10 @@ class StorageSyncer(
         mutatedPaths: Set<String>,
     ): String {
         val signature = StringBuilder()
+        val mutatedKeys =
+            mutatedPaths
+                .map { pathKey(it) }
+                .toSet()
 
         for (source in sources.sortedBy { it.path }) {
             signature.append(source.path)
@@ -180,7 +183,7 @@ class StorageSyncer(
 
         for (target in targets.sortedBy { it.path }) {
             val checksum =
-                if (target.path in mutatedPaths) {
+                if (pathKey(target.path) in mutatedKeys) {
                     storage
                         .read(target.path)
                         .use { hash(it) }
@@ -204,10 +207,14 @@ class StorageSyncer(
         sources: List<SourceFile>,
         storage: WritableSyncStorage,
     ): SyncResult {
+        val changedKeys =
+            (plan.updated + plan.deleted)
+                .map { pathKey(it) }
+                .toSet()
         val original =
             storage
                 .list()
-                .filter { it.path in plan.updated || it.path in plan.deleted }
+                .filter { pathKey(it.path) in changedKeys }
                 .associate { entry ->
                     entry.path to
                         storage

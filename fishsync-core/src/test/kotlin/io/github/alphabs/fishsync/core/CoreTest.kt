@@ -8,6 +8,8 @@ import io.github.alphabs.fishsync.core.storage.SourceFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncRule
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
 import io.github.alphabs.fishsync.core.storage.SyncFailure
+import io.github.alphabs.fishsync.core.storage.hash
+import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.storage.versions.VersionState
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition

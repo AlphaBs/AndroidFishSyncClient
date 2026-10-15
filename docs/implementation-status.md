@@ -2,7 +2,13 @@
 
 작성일: 2026-10-15 (Asia/Seoul)
 
-## 이번 구현
+## 원본 core 복원
+
+원본 최상위 public/internal 타입 54개의 대응 구현과 파일 구조를 복원했다. [타입 대응표](upstream-type-map.md), [현재 core 구조](core-architecture.md), [Android 대응 경계](android-adaptations.md)를 기준으로 한다. 원본의 경로·파일·비교기·옵션·병렬 처리·진행률·버전 계약과 기존 앱의 storage 확장을 구분한다.
+
+CI에서 고정 원본 .NET 소스로 비교 기대값과 glob 기대값을 생성해 Kotlin과 대조한다. 이후 변경의 테스트는 CI에 위임한다. 아래 기존 검증 기록은 최초 구현 단계에서 수행한 기록이며 최신 CI 결과는 GitHub Actions 실행에서 확인한다.
+
+## 최초 구현
 
 - Kotlin 2.1.20, AGP 8.9.2, Gradle 8.11.1, JDK 17, Android minSdk 26 / compileSdk 35.
 - `fishsync-core`, `fishsync-client`, `fishsync-android`, `sample-app`의 빌드 구조와 CI.
@@ -21,7 +27,7 @@
 
 `tools/contract-reference`가 원본 .NET 라이브러리를 호출해 `fixtures/comparison-contract.json`의 기대 결과를 생성한다. Kotlin의 ReferenceContractTest가 같은 입력을 비교한다. 현재 9개 사례는 FullSync, UpdateOnly, InstallOnly, 규칙 우선순위, 체크섬 생략, 버전 조건·강제 적용, 대소문자, 재귀 glob이다.
 
-이 검증에서 InstallOnly의 기존 파일은 동일 목록에도 포함하지 않는 원본 동작을 확인하고 맞췄다. 전체 원본 테스트를 이식했다는 의미는 아니다. `{…}` glob은 현재 지원하지 않고 명시적으로 거부한다.
+이 검증에서 InstallOnly의 기존 파일은 동일 목록에도 포함하지 않는 원본 동작을 확인하고 맞췄다. 전체 원본 테스트를 이식했다는 의미는 아니다. 이후 glob 토큰화·평가도 DotNet.Glob 3.1.3을 기준으로 옮겼다. `{…}`는 선택 문법으로 확장하지 않고 원본처럼 리터럴로 취급한다.
 
 기대 결과를 다시 생성하려면 .NET 10 SDK와 원본 저장소 체크아웃이 필요하다. 원본 참조 경로는 `-p:FishSyncOriginalProject=/absolute/path/src/FishSyncClient.csproj`로 바꿀 수 있다.
 
@@ -30,7 +36,7 @@ dotnet run --project tools/contract-reference -- fixtures/comparison-contract.js
 # 생성 결과를 검토하고 fixtures/comparison-contract.json에 반영한다.
 ```
 
-## 검증 기록
+## 최초 구현 검증 기록
 
 - JVM 테스트: 코어 13개, 공통 비교 계약 1개(내부 9개 사례), HTTP 클라이언트 8개.
 - Android 15 에뮬레이터 계측 5개: 앱 전용 파일, SAF 생성·교체·삭제, 체크섬 실패 보호, 제공자 이름변경 실패 보호, 폴더 조회 실패 시 삭제 방지.
@@ -41,8 +47,8 @@ dotnet run --project tools/contract-reference -- fixtures/comparison-contract.js
 
 ## 현재 보장과 제한
 
-- 첫 구현의 전송은 직렬 처리한다. 병렬 처리 수 설정과 대규모 폴더 성능 최적화는 남아 있다.
-- 코어의 비교/파일 추상화는 Kotlin용 API로 재구성했다. .NET의 모든 comparer와 확장 지점을 일대일 이식한 상태는 아니다.
+- 원본 core는 병렬도 지정과 기본 CPU 수 기준 1~4개 처리를 지원한다. 샘플 앱의 storage 안전 적용 확장은 현재 직렬 처리하며 큰 SAF 폴더의 성능 검증은 남아 있다.
+- 원본의 파일 계층·비교기·컬렉션·확장 인터페이스를 유지한다. .NET Stream·취소·콜백의 JVM 대응과 Android URI 어댑터 경계는 별도로 문서화했다.
 - 의존 버킷은 현재 명시적으로 거부한다. 재귀 조회·우선순위 병합은 후속 작업이다.
 - 현재 서버 HTTP 업로드 작업의 PUT/POST를 지원한다. 다른 작업 타입은 실행하지 않고 오류를 반환한다.
 - 버킷 제한 정보는 `bucketInfo`로 조회할 수 있으나 UI 한도 표시·사전 제한 검증은 아직 없으며 서버가 최종 검증한다.
@@ -58,7 +64,7 @@ dotnet run --project tools/contract-reference -- fixtures/comparison-contract.js
 1. 최저 지원 API 26과 실제 단말에서 SAF·권한 취소·회전·프로세스 종료 시나리오 검증.
 2. 느린 제공자·큰 파일 목록 성능과 제한된 병렬 전송.
 3. 의존 버킷, 서버 제한·오류 세부정보, 갱신된 전송 URL의 복구 정책.
-4. 남은 원본 경계 사례와 비교기 API 확장.
+4. 원본 경계 사례의 CI 교차 검증 확대와 실제 제공자 차이 검증.
 5. 지정 테스트 서버에서의 호환성 검증과 공개 Maven 배포.
 
 출시 준비 완료로 간주하지 않는다. 최초 구현과 반복 검증을 위한 기반이며 후속 검증은 계획의 완료 조건을 따른다.

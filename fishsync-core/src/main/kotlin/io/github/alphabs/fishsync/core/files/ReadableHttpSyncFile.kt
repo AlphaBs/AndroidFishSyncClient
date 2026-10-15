@@ -19,16 +19,17 @@ import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.time.Instant
+import java.net.URI
+import java.time.OffsetDateTime
 import kotlin.coroutines.resumeWithException
 
-class ReadableHttpSyncFile(
+open class ReadableHttpSyncFile(
     path: RootedPath,
     private val httpClient: OkHttpClient,
     metadata: SyncFileMetadata? = null,
 ) : SyncFile(path, metadata) {
-    var uploaded: Instant = Instant.parse("0001-01-01T00:00:00Z")
-    var location: String? = null
+    var uploaded: OffsetDateTime = OffsetDateTime.parse("0001-01-01T00:00:00Z")
+    var location: URI? = null
     override val isReadable = true
     override val isWritable = false
 
@@ -36,7 +37,7 @@ class ReadableHttpSyncFile(
         val request =
             Request
                 .Builder()
-                .url(requireNotNull(location))
+                .url(requireNotNull(location).toString())
                 .build()
         val call = httpClient.newCall(request)
         val response =
@@ -61,7 +62,7 @@ class ReadableHttpSyncFile(
                 )
             }
         try {
-            check(response.isSuccessful) { "HTTP ${response.code}" }
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: error("Empty HTTP body")
             val watcher =
                 CoroutineScope(

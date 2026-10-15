@@ -1,6 +1,7 @@
 package io.github.alphabs.fishsync.core.storage
 
-import io.github.alphabs.fishsync.core.hash
+import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
+import io.github.alphabs.fishsync.core.storage.hash
 import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -40,18 +41,9 @@ class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
         output: OutputStream,
         onProgress: (SyncProgress) -> Unit,
     ): Long {
-        val buffer = ByteArray(65536)
         var copied = 0L
-
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val bytesRead = input.read(buffer)
-            if (bytesRead < 0) {
-                break
-            }
-
-            output.write(buffer, 0, bytesRead)
-            copied += bytesRead
+        StreamProgressHelper.copyStreamWithProgressPerBuffer(input, output, 65536) { count ->
+            copied += count
             onProgress(SyncProgress(source.path, "transfer", copied, source.size))
         }
 

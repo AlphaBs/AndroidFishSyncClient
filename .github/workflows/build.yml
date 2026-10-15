@@ -39,6 +39,7 @@ jobs:
             fishsync-core/build/test-results/
             fishsync-client/build/test-results/
             fixtures/generated-glob-contract.json
+            fixtures/generated-version-contract.json
 
   android-tests:
     runs-on: ubuntu-latest

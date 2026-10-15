@@ -11,15 +11,16 @@ internal object ChecksumMetadataValidator {
         val expected =
             try {
                 ChecksumAlgorithms
-                    .createHashAlgorithmFromName(checksum.algorithmName)
-                    .digestLength * 2
+                    .createHashAlgorithmFromName(
+                        checksum.algorithmName ?: throw NoSuchElementException(),
+                    ).digestLength * 2
             } catch (_: NoSuchElementException) {
                 throw FileComparerException(
                     "Unsupported $role checksum algorithm: ${checksum.algorithmName}",
                 )
             }
         val hex = checksum.checksumHexString
-        if (hex.length != expected ||
+        if (hex == null || hex.length != expected ||
             hex.any { it !in '0'..'9' && it !in 'a'..'f' && it !in 'A'..'F' }
         ) {
             throw FileComparerException("Invalid $role checksum")

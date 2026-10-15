@@ -1,4 +1,4 @@
-package io.github.alphabs.fishsync.core
+package io.github.alphabs.fishsync.core.storage
 
 fun relativePath(value: String): String {
     val path = value.replace('\\', '/')

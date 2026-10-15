@@ -1,8 +1,8 @@
 package io.github.alphabs.fishsync.core.storage.internals
 
-import io.github.alphabs.fishsync.core.hash
 import io.github.alphabs.fishsync.core.storage.ChangedFileException
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
+import io.github.alphabs.fishsync.core.storage.hash
 
 internal suspend fun checkUnchanged(
     storage: ReadableSyncStorage,

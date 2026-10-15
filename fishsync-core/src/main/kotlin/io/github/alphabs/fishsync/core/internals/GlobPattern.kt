@@ -52,14 +52,7 @@ internal class GlobPattern(
                 '*' -> return finish(subject, wildcard(subject, index + 1, current))
                 'D' -> return finish(subject, directory(subject, index, current))
                 'L' -> {
-                    if (!subject.regionMatches(
-                            current,
-                            token.text,
-                            0,
-                            token.text.length,
-                            insensitive,
-                        )
-                    ) {
+                    if (!OrdinalCase.regionMatches(subject, current, token.text, insensitive)) {
                         return null
                     }
                     current += token.text.length
@@ -180,15 +173,15 @@ internal class GlobPattern(
         val start = token.text[0]
         val end = token.text[1]
         if (!insensitive || token.kind == 'N') return character in start..end
-        return character in start.uppercaseChar()..end.uppercaseChar() ||
-            character in start.lowercaseChar()..end.lowercaseChar()
+        return character in OrdinalCase.upper(start)..OrdinalCase.upper(end) ||
+            character in OrdinalCase.lower(start)..OrdinalCase.lower(end)
     }
 
     private fun sameCharacter(
         first: Char,
         second: Char,
     ): Boolean =
-        if (insensitive) first.uppercaseChar() == second.uppercaseChar() else first == second
+        if (insensitive) OrdinalCase.upper(first) == OrdinalCase.upper(second) else first == second
 
     private fun tokenize(pattern: String): List<Token> {
         require(pattern.isNotEmpty()) { "Empty glob pattern" }

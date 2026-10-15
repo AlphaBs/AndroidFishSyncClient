@@ -16,7 +16,7 @@ import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
-class ParallelSyncFilePairSyncer(
+open class ParallelSyncFilePairSyncer(
     private val maxDegreeOfParallelism: Int =
         Runtime.getRuntime().availableProcessors().coerceIn(
             1,

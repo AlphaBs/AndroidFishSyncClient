@@ -78,7 +78,9 @@ val result = client.pull(bucketId, storage, expectedPlan = plan)
 - [구현 계획](docs/implementation-plan.md)
 - [구현 현황·검증·남은 작업](docs/implementation-status.md)
 - [core 객체 구조와 확장](docs/core-architecture.md)
-- [원본 core 구조·동작 차이 감사](docs/upstream-core-audit.md)
+- [원본 타입 대응표](docs/upstream-type-map.md)
+- [Android에서 필요한 차이](docs/android-adaptations.md)
+- [초기 원본 차이 감사 기록](docs/upstream-core-audit.md)
 - [원본 비교 계약](fixtures/comparison-contract.json)
 
 ## 라이선스

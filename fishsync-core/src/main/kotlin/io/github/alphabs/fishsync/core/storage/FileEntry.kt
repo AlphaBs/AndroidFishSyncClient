@@ -1,6 +1,6 @@
 package io.github.alphabs.fishsync.core.storage
 
-import io.github.alphabs.fishsync.core.relativePath
+import io.github.alphabs.fishsync.core.storage.relativePath
 
 data class FileEntry(
     val path: String,

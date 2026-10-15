@@ -4,7 +4,7 @@ import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.internals.GlobPattern
 import io.github.alphabs.fishsync.core.syncer.glob
 
-class CompositeFileComparerWithGlob(
+open class CompositeFileComparerWithGlob(
     private val errorMode: ComparerErrorHandlingModes = ComparerErrorHandlingModes.ThrowException,
 ) : IFileComparer {
     private val comparers = mutableListOf<Pair<GlobPattern, IFileComparer>>()
