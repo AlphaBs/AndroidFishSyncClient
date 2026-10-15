@@ -3,13 +3,10 @@ package io.github.alphabs.fishsync.core.files
 import io.github.alphabs.fishsync.core.PathHelper
 import io.github.alphabs.fishsync.core.RootedPath
 import io.github.alphabs.fishsync.core.internals.LocalPathGuard
+import io.github.alphabs.fishsync.core.internals.StreamOpenHelper
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
 import io.github.alphabs.fishsync.core.internals.endsInNativeDirectorySeparator
 import io.github.alphabs.fishsync.core.progress.ByteProgress
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -39,8 +36,7 @@ open class LocalSyncFile(
     override val isWritable get() = path.isRooted
 
     override suspend fun openReadStream(): InputStream =
-        withContext(Dispatchers.IO) {
-            currentCoroutineContext().ensureActive()
+        StreamOpenHelper.open {
             val fullPath = path.getFullPath()
             LocalPathGuard.ensureNoLinks(fullPath)
             if (endsInNativeDirectorySeparator(fullPath)) throw IOException("Not a file: $fullPath")
@@ -48,8 +44,7 @@ open class LocalSyncFile(
         }
 
     override suspend fun openWriteStream(): OutputStream =
-        withContext(Dispatchers.IO) {
-            currentCoroutineContext().ensureActive()
+        StreamOpenHelper.open {
             val fullPath = path.getFullPath()
             LocalPathGuard.ensureNoLinks(fullPath)
             PathHelper.createParentDirectory(fullPath)
