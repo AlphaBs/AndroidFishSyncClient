@@ -134,10 +134,22 @@ class ReferenceContractTest {
                             .getValue("expected")
                             .jsonObject
                     for ((name, actual) in mapOf(
-                        "added" to result.added,
-                        "updated" to result.updated,
-                        "deleted" to result.deleted,
-                        "identical" to result.identical,
+                        "added" to
+                            result.addedFiles
+                                .map { it.path.subPath }
+                                .sorted(),
+                        "updated" to
+                            result.updatedFilePairs
+                                .map { it.source.path.subPath }
+                                .sorted(),
+                        "deleted" to
+                            result.deletedFiles
+                                .map { it.path.subPath }
+                                .sorted(),
+                        "identical" to
+                            result.identicalFilePairs
+                                .map { it.source.path.subPath }
+                                .sorted(),
                     )) {
                         assertEquals(
                             expected.getValue(name).jsonArray.map {

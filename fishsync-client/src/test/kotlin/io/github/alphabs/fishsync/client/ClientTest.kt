@@ -223,34 +223,47 @@ class ClientTest {
         }
 
     @Test
-    fun changedUploadSnapshotIsRejectedBeforeServerMutation() =
+    fun pushUploadsCurrentContentsWithoutPriorComparison() =
         runBlocking<Unit> {
             MockWebServer().use { server ->
-                val directory = temporaryDirectory("push-test-")
+                val directory = temporaryDirectory("push-current-")
                 val scratch = temporaryDirectory("scratch-")
-
                 try {
-                    val file = File(directory, "file").apply { writeText("123") }
-                    server.enqueue(fileResponse("file", checksum = "0".repeat(32)))
-                    server.enqueue(fileResponse("file", checksum = "0".repeat(32)))
-                    val api = FishSyncClient(apiUrl(server))
-                    val storage = FileSyncStorage(directory)
-                    val preview = api.comparePush("bucket", storage)
+                    File(directory, "file").writeText("456")
+                    server.enqueue(
+                        actionResponse(
+                            server
+                                .url("/upload")
+                                .toString(),
+                        ),
+                    )
+                    server.enqueue(MockResponse().setResponseCode(204))
+                    server.enqueue(jsonResponse("""{"isSuccess":true,"requiredActions":[]}"""))
 
-                    file.writeText("456")
-                    assertFailsWith<PushFailure> {
-                        api.push("bucket", storage, scratch, expectedPlan = preview)
-                    }
+                    val result =
+                        FishSyncClient(apiUrl(server)).push(
+                            "bucket",
+                            FileSyncStorage(directory),
+                            scratch,
+                        )
 
-                    assertEquals(2, server.requestCount)
+                    assertTrue(result.isSuccess)
+                    assertEquals(3, server.requestCount)
                     assertEquals(
-                        "GET",
+                        "POST",
                         server
                             .takeRequest()
                             .method,
                     )
                     assertEquals(
-                        "GET",
+                        "456",
+                        server
+                            .takeRequest()
+                            .body
+                            .readUtf8(),
+                    )
+                    assertEquals(
+                        "POST",
                         server
                             .takeRequest()
                             .method,
@@ -304,32 +317,30 @@ class ClientTest {
         }
 
     @Test
-    fun pushComparisonUsesTheSameUnicodeCasePolicyAsPull() =
+    fun pushRejectsUnicodeDuplicatePathsBeforeServerRequest() =
         runBlocking<Unit> {
             MockWebServer().use { server ->
                 val directory = temporaryDirectory("unicode-push-")
+                val scratch = temporaryDirectory("scratch-")
                 try {
                     File(directory, "I.txt").writeText("123")
-                    server.enqueue(fileResponse("ı.txt"))
-                    val plan =
-                        FishSyncClient(
-                            apiUrl(server),
-                        ).comparePush("bucket", FileSyncStorage(directory))
-                    assertEquals(listOf("I.txt"), plan.identical)
+                    File(directory, "ı.txt").writeText("456")
+                    assertFailsWith<PushFailure> {
+                        FishSyncClient(apiUrl(server)).push(
+                            "bucket",
+                            FileSyncStorage(directory),
+                            scratch,
+                        )
+                    }
+                    assertEquals(0, server.requestCount)
                     assertTrue(
-                        plan.added
-                            .isEmpty(),
-                    )
-                    assertTrue(
-                        plan.updated
-                            .isEmpty(),
-                    )
-                    assertTrue(
-                        plan.deleted
+                        scratch
+                            .listFiles()!!
                             .isEmpty(),
                     )
                 } finally {
                     directory.deleteRecursively()
+                    scratch.deleteRecursively()
                 }
             }
         }

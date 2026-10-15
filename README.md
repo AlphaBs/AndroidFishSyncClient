@@ -5,7 +5,7 @@
 - 파일 목록·MD5/SHA1 비교와 자체 glob 매처를 사용하는 순서 있는 동기화 규칙
 - 서버 로그인, 버킷 조회, PULL/PUSH, 진행률 및 취소
 - 일반 파일과 시스템 폴더 선택기(SAF)로 선택한 폴더
-- 변경 목록을 확인한 뒤 실행하는 Android 테스트 앱
+- 폴더와 방향을 선택해 PULL/PUSH를 실행하는 Android 테스트 앱
 
 ## 빌드
 
@@ -33,7 +33,7 @@ JDK 17과 Android SDK 35 / Build Tools 35.0.0이 필요합니다. `ANDROID_HOME`
 
 ## 샘플 앱
 
-서버 API URL(`/api` 포함)과 로그인 정보를 입력하고 버킷을 선택합니다. 앱 전용 폴더 또는 시스템 폴더 선택기로 동기화 대상 폴더를 고릅니다. PULL/PUSH 방향을 정하고 **변경 목록 비교 → 동기화 실행 → 확인** 순서로 진행하세요.
+서버 API URL(`/api` 포함)과 로그인 정보를 입력하고 버킷을 선택합니다. 앱 전용 폴더 또는 시스템 폴더 선택기로 동기화 대상 폴더를 고릅니다. PULL/PUSH 방향을 정하고 **동기화 실행**을 누르세요.
 
 **FullSync는 대상에만 있는 파일을 삭제합니다.** PULL의 대상은 로컬 폴더이며 PUSH의 대상은 서버 버킷입니다. 테스트 버킷과 테스트 폴더에서 먼저 확인하세요. 계정 토큰은 메모리에만 보관하며 폴더 URI와 접근 권한은 앱 재시작 후에도 유지합니다.
 
@@ -64,9 +64,7 @@ import io.github.alphabs.fishsync.client.FishSyncClient
 
 val storage = SafSyncStorage(context, treeUri) // 시스템 선택기로 받은 URI 권한을 먼저 유지
 val client = FishSyncClient(serverUrl, tokenProvider = { sessionToken })
-val plan = client.comparePull(bucketId, storage)
-// 사용자 확인 후 실행. 미리보기 이후 내용이 달라지면 다시 비교해야 합니다.
-val result = client.pull(bucketId, storage, expectedPlan = plan)
+val result = client.pull(bucketId, storage)
 ```
 
 `client.progress`는 전송 이벤트 Flow입니다. 수집하지 않아도 실행이 막히지 않습니다. `pull`/`push`는 suspend 함수이고 취소는 호출 코루틴으로 전달합니다. 스트림 I/O는 강제로 중단하지 않으므로 진행 중인 읽기·쓰기가 반환될 때까지 취소가 지연될 수 있습니다. 일반 파일에는 `FileSyncStorage`를 사용합니다. `push`에는 동기화 루트 밖의 앱 전용 임시 폴더를 전달하세요.

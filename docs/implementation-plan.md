@@ -117,17 +117,16 @@ PUSH는 서버 비교/동기화 요청 → 필요한 HTTP 작업 수행 → 다�
 
 ## 8. 공개 API 방향
 
-서버 연결과 인증은 `FishSyncClient`, 읽기 대상은 `ReadableSyncStorage`, 변경 대상은 `WritableSyncStorage`로 전달한다. 비교는 `SyncPlan`, 실행은 `SyncResult`, 진행률은 실행별 `Flow<SyncProgress>`로 제공하는 방향을 검토한다. 다음은 확정된 구현이 아닌 사용 예시다.
+서버 연결과 인증은 `FishSyncClient`, 읽기 대상은 `ReadableSyncStorage`, 변경 대상은 `WritableSyncStorage`로 전달한다. 저장소 비교는 원본 `SyncFileCollectionComparerResult`, 실행은 `SyncResult`, 진행률은 `Flow<SyncProgress>`로 제공한다. 클라이언트의 PULL/PUSH는 사전 비교나 승인 없이 실행한다.
 
 ```kotlin
 val storage = SafSyncStorage(context, treeUri)
 val client = FishSyncClient(serverUrl, tokenProvider)
-val plan = client.comparePull(bucketId, storage, rules)
-val result = client.pull(bucketId, storage, rules, expectedPlan = plan)
+val result = client.pull(bucketId, storage, rules)
 val pushResult = client.push(bucketId, storage, scratchDirectory)
 ```
 
-미리보기 결과는 영구적으로 유효한 실행 권한이나 고정된 서버 상태가 아니다. 실행 전에 관련 상태를 재확인하고 달라졌으면 재비교를 요구한다. 진행 이벤트를 수집하지 않아도 동기화가 교착되지 않게 한다.
+진행 이벤트를 수집하지 않아도 동기화가 교착되지 않게 한다.
 
 ## 9. 샘플 앱 흐름
 
@@ -135,12 +134,11 @@ val pushResult = client.push(bucketId, storage, scratchDirectory)
 2. 버킷 목록 조회·선택
 3. 앱 전용 폴더 또는 시스템 선택기로 대상 폴더 지정
 4. PULL/PUSH 방향 및 규칙 확인
-5. 추가·수정·삭제·동일 목록 미리보기
-6. 변경 내용을 확인하고 실행
-7. 파일·바이트 진행률 표시와 취소
-8. 성공·실패·취소 및 일부 적용 결과 표시
+5. 동기화 실행
+6. 파일·바이트 진행률 표시와 취소
+7. 성공·실패·취소 및 일부 적용 결과 표시
 
-폴더 URI는 재사용하되 권한 유효성을 매번 확인한다. 기본 삭제 정책을 화면에 명시하고 최초 실행에서 자동으로 삭제하지 않는다. 화면 회전으로 작업을 중복 실행하지 않게 한다. 프로세스 종료 후 이어받기는 첫 버전에서 보장하지 않는다.
+폴더 URI는 재사용하되 권한 유효성을 매번 확인한다. 기본 삭제 정책을 화면에 명시한다. 화면 회전으로 작업을 중복 실행하지 않게 한다. 프로세스 종료 후 이어받기는 첫 버전에서 보장하지 않는다.
 
 ## 10. 구현 단계와 완료 조건
 
@@ -152,7 +150,7 @@ val pushResult = client.push(bucketId, storage, scratchDirectory)
 | 4 | 로컬 전송·안전한 적용·진행률·취소 | 중단·검증 실패·공간 부족에서 기존 파일 보호 |
 | 5 | 로그인·버킷 API·PULL | 모의 서버와 지정 테스트 버킷에서 PULL 성공 |
 | 6 | PUSH와 서버 작업 처리 | 추가·수정·삭제·반복 sync·부분 실패 검증 |
-| 7 | 샘플 앱 전체 흐름, AAR·문서·CI | Android 앱에서 비교부터 PULL/PUSH 및 취소까지 재현 가능 |
+| 7 | 샘플 앱 전체 흐름, AAR·문서·CI | Android 앱에서 폴더 선택부터 PULL/PUSH 및 취소까지 재현 가능 |
 
 ## 11. 검증 전략
 

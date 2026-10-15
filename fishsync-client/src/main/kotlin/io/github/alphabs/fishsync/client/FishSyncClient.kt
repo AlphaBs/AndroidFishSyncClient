@@ -8,17 +8,14 @@ import io.github.alphabs.fishsync.core.files.ReadableHttpSyncFile
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFileChecksum
 import io.github.alphabs.fishsync.core.files.SyncFileMetadata
-import io.github.alphabs.fishsync.core.storage.ChangedFileException
 import io.github.alphabs.fishsync.core.storage.FileEntry
 import io.github.alphabs.fishsync.core.storage.FileSyncStorage
 import io.github.alphabs.fishsync.core.storage.ReadableSyncStorage
 import io.github.alphabs.fishsync.core.storage.StorageLocalFile
 import io.github.alphabs.fishsync.core.storage.StorageSyncer
-import io.github.alphabs.fishsync.core.storage.SyncPlan
 import io.github.alphabs.fishsync.core.storage.SyncProgress
 import io.github.alphabs.fishsync.core.storage.SyncResult
 import io.github.alphabs.fishsync.core.storage.WritableSyncStorage
-import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncCondition
@@ -121,47 +118,18 @@ class FishSyncClient(
         return result
     }
 
-    suspend fun comparePull(
-        id: String,
-        storage: ReadableSyncStorage,
-        rules: List<SyncRule> = defaultRules(),
-    ): SyncPlan {
-        val sources = sources(files(id))
-        return collectionSyncer.compareFiles(sources, storage, rules)
-    }
-
     suspend fun pull(
         id: String,
         storage: WritableSyncStorage,
         rules: List<SyncRule> = defaultRules(),
-        expectedPlan: SyncPlan? = null,
     ): SyncResult {
         val sources = sources(files(id))
         return collectionSyncer.compareAndSyncFiles(
             sources,
             storage,
             rules,
-            expectedPlan = expectedPlan,
         )
     }
-
-    suspend fun comparePush(
-        id: String,
-        storage: ReadableSyncStorage,
-    ): SyncPlan =
-        withContext(Dispatchers.IO) {
-            val remote = files(id)
-            val local =
-                storage.list().map { entry ->
-                    val checksum =
-                        storage
-                            .read(entry.path)
-                            .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
-                    UploadFile(entry.path, entry.size ?: -1, checksum)
-                }
-
-            pushPlan(remote, local)
-        }
 
     /** 전송용 복사본은 동기화 루트 밖의 앱 전용 임시 폴더에 보관한다. */
     suspend fun push(
@@ -169,11 +137,7 @@ class FishSyncClient(
         storage: ReadableSyncStorage,
         scratchDirectory: File,
         maxRounds: Int = 10,
-        expectedPlan: SyncPlan? = null,
-    ): PushResponse =
-        StorageLocks.run(storage) {
-            pushUnlocked(id, storage, scratchDirectory, maxRounds, expectedPlan)
-        }
+    ): PushResponse = uploadFiles(id, storage, scratchDirectory, maxRounds)
 
     private fun apiUrl(vararg segments: String): HttpUrl {
         val builder = base.newBuilder()
@@ -245,85 +209,11 @@ class FishSyncClient(
             remote
         }
 
-    private suspend fun pushPlan(
-        remoteFiles: BucketFiles,
-        local: List<UploadFile>,
-    ): SyncPlan {
-        val remote =
-            remoteFiles.files
-                .associateByTo(sortedMapOf(String.CASE_INSENSITIVE_ORDER)) { it.path }
-        val seen = sortedSetOf(String.CASE_INSENSITIVE_ORDER)
-        val signature = StringBuilder()
-        val added = mutableListOf<String>()
-        val updated = mutableListOf<String>()
-        val identical = mutableListOf<String>()
-
-        for (entry in local.sortedBy { it.path }) {
-            val key = entry.path
-            require(seen.add(key)) { "Duplicate local path" }
-            appendSnapshotSignature(signature, entry)
-
-            val other = remote[key]
-            if (other == null) {
-                added.add(entry.path)
-            } else if (matchesRemote(entry, other)) {
-                identical.add(entry.path)
-            } else {
-                updated.add(entry.path)
-            }
-        }
-
-        val sortedRemote =
-            remote.values
-                .sortedBy { it.path }
-        for (file in sortedRemote) {
-            signature.append(file.path)
-            signature.append('\u0000')
-            signature.append(file.metadata)
-            signature.append('\n')
-        }
-
-        val fingerprint =
-            signature
-                .toString()
-                .byteInputStream()
-                .use { ChecksumAlgorithms.computeHashAsync("sha1", it) }
-        val deleted =
-            remote
-                .filterKeys { it !in seen }
-                .values
-                .map { it.path }
-                .sorted()
-
-        return SyncPlan(added.sorted(), updated.sorted(), deleted, identical.sorted(), fingerprint)
-    }
-
-    private fun appendSnapshotSignature(
-        signature: StringBuilder,
-        entry: UploadFile,
-    ) {
-        signature.append(entry.path)
-        signature.append('\u0000')
-        signature.append(entry.checksum)
-        signature.append('\n')
-    }
-
-    private fun matchesRemote(
-        local: UploadFile,
-        remote: RemoteFile,
-    ): Boolean {
-        val matchesSize = local.size < 0 || local.size == remote.metadata.size
-        return matchesSize &&
-            local.checksum
-                .equals(remote.metadata.checksum, true)
-    }
-
-    private suspend fun pushUnlocked(
+    private suspend fun uploadFiles(
         id: String,
         storage: ReadableSyncStorage,
         scratchDirectory: File,
         maxRounds: Int,
-        expectedPlan: SyncPlan?,
     ): PushResponse =
         withContext(Dispatchers.IO) {
             require(maxRounds in 1..20)
@@ -334,12 +224,6 @@ class FishSyncClient(
 
             try {
                 val snapshot = createUploadSnapshot(storage, scratchDirectory, copies)
-                if (expectedPlan != null) {
-                    require(pushPlan(files(id), snapshot) == expectedPlan) {
-                        "Changes differ from the preview; compare again"
-                    }
-                }
-
                 completePush(id, snapshot, copies, uploaded, maxRounds)
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -388,14 +272,6 @@ class FishSyncClient(
                 temporary
                     .inputStream()
                     .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
-            val current =
-                storage
-                    .read(entry.path)
-                    .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
-            if (checksum != current) {
-                throw ChangedFileException(entry.path)
-            }
-
             snapshot.add(UploadFile(entry.path, temporary.length(), checksum))
         }
 

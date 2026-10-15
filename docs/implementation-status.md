@@ -5,8 +5,8 @@
 ## 현재 구성
 
 - Kotlin 2.1.20, AGP 8.9.2, Gradle 8.11.1, JDK 17, Android minSdk 26 / compileSdk 35.
-- core는 원본 파일·비교기·규칙·진행률·버전 모델을 제공한다. 파일·체크섬·규칙은 SyncFile·SyncFileChecksum·SyncRule·IFileComparer로 통일한다.
-- storage 확장은 미리보기, 임시 파일 검증 후 적용, 실패 시 삭제 생략, 같은 루트 잠금과 부분 적용 결과를 제공한다. 서버 클라이언트와 샘플 앱에서 사용한다.
+- core는 원본 파일·비교기·규칙·진행률·버전 모델을 제공한다. 파일·체크섬·규칙은 SyncFile·SyncFileChecksum·SyncRule·FileComparer로 통일한다.
+- storage 확장은 저장소 어댑터, 임시 파일 검증 후 적용, 실패 시 삭제 생략과 부분 적용 결과를 제공한다. 비교는 원본 결과 타입을 반환하고 동기화는 사전 미리보기 없이 실행한다. 서버 클라이언트와 샘플 앱에서 사용한다.
 - client는 로그인·버킷 조회·PULL/PUSH와 전송 진행률·취소를 제공한다.
 - android는 앱 전용 파일과 SAF 문서 트리 접근을 제공한다. 샘플 앱에서 폴더 선택과 영구 URI 권한 유지를 처리한다.
 - 모의 서버는 운영 계정 없이 로그인·PULL/PUSH를 확인하기 위한 개발 도구다.
@@ -16,7 +16,7 @@
 로컬에서 테스트를 실행하지 않는다. [GitHub Actions](https://github.com/AlphaBs/AndroidFishSyncClient/actions/workflows/build.yml)에서 다음을 검증한다.
 
 - 고정한 원본 .NET 소스로 비교 계약 9개 사례, 버전 공백 8개 사례를 생성해 Kotlin 결과와 대조한다.
-- 자체 glob 문법과 JVM 단위·HTTP·계약 테스트, 협력적 취소·병렬 실패·미리보기 보호를 검증한다.
+- 자체 glob 문법과 JVM 단위·HTTP·계약 테스트, 협력적 취소·병렬 실패·직접 동기화를 검증한다.
 - Android API 26과 35에서 앱 전용 경로, SAF 생성·교체·삭제, 원본 비교기 연결, 내부 이름 정책 분리와 제공자 실패를 계측한다.
 - Kotlin 스타일, Debug/Release 앱 빌드와 Android lint를 실행한다.
 

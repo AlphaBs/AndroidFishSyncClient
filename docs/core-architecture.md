@@ -11,7 +11,7 @@
 | progress | ByteProgress, 파일·바이트 이벤트, 순차·동시 집계와 파일 상태 컬렉션 |
 | versions | VersionManager, 파일 구현 FileVersionManager, NullVersionManager |
 | internals | 원본 경로·스트림·진행률 보조 객체 및 자체 glob 매처·스트림 진행률 보조 |
-| storage | 앱의 저장소·미리보기·안전 적용 확장. 원본 API와 구분한다. |
+| storage | 앱 저장소와 파일 교체 확장. 원본 API와 구분한다. |
 
 ## 원본 계약으로 조립
 
@@ -36,7 +36,7 @@ val result = syncer.compareAndSyncFiles(sourceFiles, options)
 syncer.deleteLocalFiles(result.deletedFiles)
 ```
 
-규칙마다 IFileComparer를 전달한다. CompositeFileComparerWithGlob은 처음 일치하는 패턴의 비교기 하나를 선택한다. 메타데이터 비교기는 오류 처리 모드를 지원하며 로컬 비교기와 구분한다. 원본처럼 전송 후 같은 규칙의 비교기로 검증한다.
+규칙마다 FileComparer를 전달한다. CompositeFileComparerWithGlob은 처음 일치하는 패턴의 비교기 하나를 선택한다. 메타데이터 비교기는 오류 처리 모드를 지원하며 로컬 비교기와 구분한다. 원본처럼 전송 후 같은 규칙의 비교기로 검증한다.
 
 경로의 대소문자 비교는 Kotlin 표준 비교기와 ignoreCase 옵션을 사용한다. .NET OrdinalIgnoreCase 보정 계층은 두지 않는다.
 
@@ -44,22 +44,14 @@ syncer.deleteLocalFiles(result.deletedFiles)
 
 기본 병렬 전송기는 프로세서 수 기준 1~4개를 사용하며 병렬도를 지정할 수 있다. 큐·비교·동기화 이벤트와 바이트 델타를 제공하고 파일 상태·합계 집계 객체를 유지한다. suspend 함수와 호출 코루틴의 취소 문맥이 Task/ValueTask·CancellationToken에 대응한다.
 
-VersionManager는 IVersionManager의 비동기 파일 구현이다. UTF-8 128바이트 제한·trim·직접 쓰기를 유지하며 NullVersionManager는 항상 새 버전으로 판단한다.
+FileVersionManager는 VersionManager의 비동기 파일 구현이다. UTF-8 128바이트 제한·trim·직접 쓰기를 유지하며 NullVersionManager는 항상 새 버전으로 판단한다.
 
 ## 앱 저장소 확장
 
-서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 이 계층은 원본 SyncFile을 직접 받고 저장소 대상을 StorageLocalFile로 연결해 원본 컬렉션 비교기를 호출하며, 미리보기·임시 적용·실패 시 삭제 생략을 추가한다. 규칙은 원본 SyncRule과 IFileComparer를 직접 사용한다. 추가 무결성 해시는 수정·삭제 대상에만 수행하므로 제외·크기 비교 파일의 내용을 강제로 읽지 않는다.
+서버 클라이언트와 샘플 앱은 storage.StorageSyncer를 사용한다. 저장소 대상을 StorageLocalFile로 연결해 원본 컬렉션 비교기를 호출하며, compareFiles는 원본 SyncFileCollectionComparerResult를 그대로 반환한다. 실행은 비교 후 바로 전송·삭제한다. 규칙은 원본 SyncRule과 FileComparer를 직접 사용한다. 파일 교체에는 임시 파일 검증과 실패 시 삭제 생략 정책이 남아 있다.
 
 [Android 대응 경계](android-adaptations.md)에 일반 파일·앱 전용 폴더·SAF 진입점과 필수 차이, 선택적인 안전 정책을 구분했다.
 
 ## 검증
 
 테스트는 CI에서만 실행한다. 고정된 원본 소스를 체크아웃하고 .NET 비교 결과와 버전 공백 결과를 생성해 Kotlin과 대조한다. glob은 자체 문법·작은 입력의 전수 대조·긴 입력으로 별도 검증한다. 객체·비교 정책·병렬 실패·취소·진행률·버전 및 HTTP/SAF 계약을 테스트한다. Android 계측은 API 26과 35에서 실행하며 Debug/Release 빌드와 Android lint도 실행한다. 타입 대응표의 파일 존재와 전체 동작의 동일성 보장은 구분한다.
-
-## 저장소 보호 장치
-
-다음 기능은 원본 core의 필수 동작이나 Android의 필수 요구 사항이 아니라, 앱의 미리보기와 적용 사이에 파일 상태가 달라지는 상황을 처리하는 storage 확장 정책이다.
-
-- `StorageLocks`: 같은 `storage.identity`를 사용하는 PULL 적용과 PUSH를 프로세스 내 Mutex로 직렬화한다. 다른 앱이나 프로세스의 파일 변경은 막지 못한다.
-- `StorageSnapshot.kt`: 스냅샷 객체를 선언하지 않는다. `checkUnchanged` 함수가 덮어쓰기·삭제 직전에 대상 파일의 현재 MD5와 앞서 기록한 MD5를 비교하고 변경되었으면 중단한다. 파일이 생기거나 사라진 경우도 비교한다. 확인과 실제 변경은 하나의 원자적 작업이 아니다.
-- `SyncPlan.fingerprint`: 미리보기와 재비교한 계획에서 경로 목록은 같아도 파일 상태가 달라진 경우를 구분하기 위한 해시다. PULL은 소스 경로·메타데이터, 대상 경로 목록, 덮어쓰기·삭제할 대상의 내용 체크섬으로 만들고, PUSH는 로컬 업로드 정보와 서버 파일 메타데이터로 만든다. 모든 파일의 바이트를 항상 해시하는 전체 폴더 스냅샷은 아니다. 호출자가 `expectedPlan`을 제공하면 재계산한 계획 전체와 비교한다.

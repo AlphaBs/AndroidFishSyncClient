@@ -1,15 +1,12 @@
 package io.github.alphabs.fishsync.core.storage
 
-import io.github.alphabs.fishsync.core.ChecksumAlgorithms
 import io.github.alphabs.fishsync.core.PathOptions
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
-import io.github.alphabs.fishsync.core.storage.internals.StorageLocks
-import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import io.github.alphabs.fishsync.core.storage.relativePath
 import io.github.alphabs.fishsync.core.syncer.ParallelSyncFilePairSyncer
-import io.github.alphabs.fishsync.core.syncer.SyncAction
 import io.github.alphabs.fishsync.core.syncer.SyncContext
+import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionComparerResult
 import io.github.alphabs.fishsync.core.syncer.SyncFileCollectionSyncer
 import io.github.alphabs.fishsync.core.syncer.SyncRule
 import io.github.alphabs.fishsync.core.syncer.SyncRuleEvaluator
@@ -34,7 +31,7 @@ class StorageSyncer(
         storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
-    ): SyncPlan =
+    ): SyncFileCollectionComparerResult =
         withContext(Dispatchers.IO) {
             compareInternal(sources, storage, rules, context)
         }
@@ -44,17 +41,10 @@ class StorageSyncer(
         storage: WritableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext = SyncContext(),
-        expectedPlan: SyncPlan? = null,
     ): SyncResult =
         withContext(Dispatchers.IO) {
-            StorageLocks.run(storage) {
-                val plan = compareInternal(sources, storage, rules, context)
-                require(expectedPlan == null || expectedPlan == plan) {
-                    "Changes differ from the preview; compare again"
-                }
-
-                applyPlan(plan, sources, storage)
-            }
+            val compared = compareInternal(sources, storage, rules, context)
+            syncFiles(compared, storage)
         }
 
     private val pathComparator =
@@ -79,7 +69,7 @@ class StorageSyncer(
         storage: ReadableSyncStorage,
         rules: List<SyncRule>,
         context: SyncContext,
-    ): SyncPlan {
+    ): SyncFileCollectionComparerResult {
         val evaluator =
             SyncRuleEvaluator(
                 SyncerOptions(rules, context),
@@ -89,45 +79,16 @@ class StorageSyncer(
         val targets = indexByPath(storage.list()) { it.path }
         validateInventory(sourceIndex.keys, targets.keys, evaluator)
 
-        val added = mutableListOf<String>()
-        val updated = mutableListOf<String>()
-        val identical = mutableListOf<String>()
-
         val original =
             SyncFileCollectionSyncer(
                 ParallelSyncFilePairSyncer(1),
                 PathOptions(caseInsensitive = caseInsensitive),
             )
-        val compared =
-            original.compareFiles(
-                sources,
-                targets.values
-                    .map { StorageLocalFile(storage, it) },
-                SyncerOptions(rules, context),
-            )
-        added.addAll(
-            compared.addedFiles
-                .map { it.path.subPath },
-        )
-        updated.addAll(
-            compared.updatedFilePairs
-                .map { it.source.path.subPath },
-        )
-        identical.addAll(
-            compared.identicalFilePairs
-                .map { it.source.path.subPath },
-        )
-
-        val deleted = findDeletedPaths(sourceIndex.keys, targets, evaluator)
-        val fingerprint =
-            createFingerprint(sources, targets.values, storage, (updated + deleted).toSet())
-
-        return SyncPlan(
-            added = added.sorted(),
-            updated = updated.sorted(),
-            deleted = deleted.sorted(),
-            identical = identical.sorted(),
-            fingerprint = fingerprint,
+        return original.compareFiles(
+            sources,
+            targets.values
+                .map { StorageLocalFile(storage, it) },
+            SyncerOptions(rules, context),
         )
     }
 
@@ -151,102 +112,25 @@ class StorageSyncer(
         }
     }
 
-    private fun findDeletedPaths(
-        sourcePaths: Set<String>,
-        targets: Map<String, FileEntry>,
-        evaluator: SyncRuleEvaluator,
-    ): List<String> {
-        val deleted = mutableListOf<String>()
-
-        for ((key, target) in targets) {
-            val rule = evaluator.evaluate(target.path)
-            if (key !in sourcePaths && rule.action == SyncAction.FullSync) {
-                deleted.add(target.path)
-            }
-        }
-
-        return deleted
-    }
-
-    private suspend fun createFingerprint(
-        sources: List<SyncFile>,
-        targets: Collection<FileEntry>,
-        storage: ReadableSyncStorage,
-        mutatedPaths: Set<String>,
-    ): String {
-        val signature = StringBuilder()
-        val mutatedKeys =
-            mutatedPaths.toSortedSet(pathComparator)
-
-        for (source in sources.sortedBy { it.path.subPath }) {
-            signature.append(source.path.subPath)
-            signature.append('\u0000')
-            signature.append(
-                source.metadata
-                    ?.size,
-            )
-            signature.append('\u0000')
-            signature.append(
-                source.metadata
-                    ?.checksum,
-            )
-            signature.append('\n')
-        }
-
-        for (target in targets.sortedBy { it.path }) {
-            val checksum =
-                if (target.path in mutatedKeys) {
-                    storage
-                        .read(target.path)
-                        .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
-                } else {
-                    null
-                }
-            signature.append(target.path)
-            signature.append('\u0000')
-            signature.append(checksum)
-            signature.append('\n')
-        }
-
-        return signature
-            .toString()
-            .byteInputStream()
-            .use { ChecksumAlgorithms.computeHashAsync("sha1", it) }
-    }
-
-    private suspend fun applyPlan(
-        plan: SyncPlan,
-        sources: List<SyncFile>,
+    private suspend fun syncFiles(
+        compared: SyncFileCollectionComparerResult,
         storage: WritableSyncStorage,
     ): SyncResult {
-        val changedKeys =
-            (plan.updated + plan.deleted).toSortedSet(pathComparator)
-        val original =
-            storage
-                .list()
-                .filter { it.path in changedKeys }
-                .associate { entry ->
-                    entry.path to
-                        storage
-                            .read(entry.path)
-                            .use { ChecksumAlgorithms.computeHashAsync("md5", it) }
-                }
-        val targets = indexByPath(storage.list()) { it.path }
+        val addedPairs =
+            compared.addedFiles.map { source ->
+                val target = FileEntry(source.path.subPath, null)
+                SyncFilePair(source, StorageLocalFile(storage, target))
+            }
         val applied = mutableListOf<String>()
         val deleted = mutableListOf<String>()
 
         try {
-            for (path in plan.added + plan.updated) {
+            for (pair in addedPairs + compared.updatedFilePairs) {
                 currentCoroutineContext().ensureActive()
-                val source = sources.first { it.path.subPath == path }
-                val targetPath = targets[path]?.path ?: path
-
-                val target = targets[path] ?: FileEntry(targetPath, null)
-                val pair = SyncFilePair(source, StorageLocalFile(storage, target))
+                val path = pair.source.path.subPath
                 filePairSyncer.sync(
                     pair = pair,
                     storage = storage,
-                    expectedTargetChecksum = original[targetPath],
                     onProgress = { events.tryEmit(it) },
                     onApplied = { copied ->
                         applied.add(path)
@@ -256,15 +140,15 @@ class StorageSyncer(
             }
 
             // 전송 실패가 있으면 이 삭제 단계에는 도달하지 않는다.
-            for (path in plan.deleted) {
+            for (file in compared.deletedFiles) {
                 currentCoroutineContext().ensureActive()
-                checkUnchanged(storage, path, original[path])
+                val path = file.path.subPath
                 storage.delete(path)
                 deleted.add(path)
                 events.tryEmit(SyncProgress(path, "deleted"))
             }
 
-            return SyncResult(plan, applied.toList(), deleted.toList())
+            return SyncResult(applied.toList(), deleted.toList())
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (failure: Exception) {

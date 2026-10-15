@@ -1,6 +1,6 @@
 # 원본 core 타입 대응표
 
-원본 `src`의 최상위 public/internal 타입 선언을 기준으로 대조한다. 디렉터리는 소문자로 옮긴다. Kotlin 인터페이스는 I 접두사를 제거하며, 이름이 겹치는 구현체는 DefaultSyncFileCollection과 FileVersionManager로 구분한다. 표의 타입 열은 원본 C# 이름이고 Kotlin 파일 열은 변경된 이름이다. `storage`는 앱의 저장소·미리보기·안전 적용 확장이며 이 표의 원본 API를 대체하지 않는다.
+원본 `src`의 최상위 public/internal 타입 선언을 기준으로 대조한다. 디렉터리는 소문자로 옮긴다. Kotlin 인터페이스는 I 접두사를 제거하며, 이름이 겹치는 구현체는 DefaultSyncFileCollection과 FileVersionManager로 구분한다. 표의 타입 열은 원본 C# 이름이고 Kotlin 파일 열은 변경된 이름이다. `storage`는 앱 저장소와 파일 교체 확장이며 이 표의 원본 API를 대체하지 않는다.
 
 확인한 원본 타입: 54개. 대응 파일 존재: 54개. 파일 존재는 동작 검증과 구분하며 동작은 CI의 계약·실패·계측 테스트로 검증한다.
 

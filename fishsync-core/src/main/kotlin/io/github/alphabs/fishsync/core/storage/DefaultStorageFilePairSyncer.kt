@@ -5,7 +5,6 @@ import io.github.alphabs.fishsync.core.filecomparers.ChecksumMetadataValidator
 import io.github.alphabs.fishsync.core.files.SyncFile
 import io.github.alphabs.fishsync.core.files.SyncFilePair
 import io.github.alphabs.fishsync.core.internals.StreamProgressHelper
-import io.github.alphabs.fishsync.core.storage.internals.checkUnchanged
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.InputStream
@@ -15,7 +14,6 @@ class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
     override suspend fun sync(
         pair: SyncFilePair,
         storage: WritableSyncStorage,
-        expectedTargetChecksum: String?,
         onProgress: (SyncProgress) -> Unit,
         onApplied: (Long) -> Unit,
     ) {
@@ -34,7 +32,6 @@ class DefaultStorageFilePairSyncer : StorageFilePairSyncer {
                 }
 
             verifyTransfer(source, pending, copied)
-            checkUnchanged(storage, targetPath, expectedTargetChecksum)
             currentCoroutineContext().ensureActive()
             pending.commit()
             onApplied(copied)

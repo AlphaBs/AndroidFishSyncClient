@@ -1,6 +1,5 @@
 package io.github.alphabs.fishsync.sample
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
@@ -21,7 +20,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.alphabs.fishsync.android.AndroidStorage
-import io.github.alphabs.fishsync.core.storage.SyncPlan
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -144,10 +142,10 @@ class MainActivity : ComponentActivity() {
         layout.addView(push)
         controls.add(push)
 
-        addButton("변경 목록 비교") {
-            selectedBucket()?.let { model.compare(it, push.isChecked) }
-        }
-        execute = addButton("동기화 실행", ::confirmSynchronization)
+        execute =
+            addButton("동기화 실행") {
+                selectedBucket()?.let { model.execute(it, push.isChecked) }
+            }
         cancel =
             Button(this).apply {
                 text = "작업 취소"
@@ -162,33 +160,6 @@ class MainActivity : ComponentActivity() {
             buckets.selectedItem
                 ?.toString() ?: return null
         return bucket.takeIf { it.isNotBlank() }
-    }
-
-    private fun confirmSynchronization() {
-        val bucket = selectedBucket() ?: return
-        val plan = model.state.value.preview ?: return
-        val title = if (push.isChecked) "서버에 반영" else "폴더에 반영"
-
-        AlertDialog
-            .Builder(this)
-            .setTitle(title)
-            .setMessage(confirmationMessage(bucket, plan))
-            .setNegativeButton("취소", null)
-            .setPositiveButton("실행") { _, _ -> model.execute(bucket, push.isChecked) }
-            .show()
-    }
-
-    private fun confirmationMessage(
-        bucket: String,
-        plan: SyncPlan,
-    ): String {
-        val target = model.folderUri ?: "앱 전용 폴더"
-        return listOf(
-            "버킷: $bucket",
-            "대상: $target",
-            "추가 ${plan.added.size}, 수정 ${plan.updated.size}, 삭제 ${plan.deleted.size}",
-            "삭제와 덮어쓰기를 포함해 실행하시겠습니까?",
-        ).joinToString("\n")
     }
 
     private fun observeState() {
@@ -212,8 +183,9 @@ class MainActivity : ComponentActivity() {
         }
 
         controls.forEach { it.isEnabled = !state.busy }
-        execute.isEnabled = !state.busy && state.preview
-            ?.hasChanges == true
+        execute.isEnabled = !state.busy &&
+            state.buckets
+                .isNotEmpty()
         cancel.isEnabled = state.busy
         status.text = state.message
     }

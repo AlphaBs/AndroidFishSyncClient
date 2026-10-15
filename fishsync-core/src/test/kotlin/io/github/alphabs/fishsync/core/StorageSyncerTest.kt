@@ -140,12 +140,24 @@ class StorageSyncerTest {
                     )
                 val sources = listOf(source("keep.txt", "new"), source("add.txt", "new"))
                 val plan = StorageSyncer().compareFiles(sources, storage, rules)
-                assertEquals(listOf("add.txt"), plan.added)
+                assertEquals(
+                    listOf("add.txt"),
+                    plan.addedFiles
+                        .map { it.path.subPath }
+                        .sorted(),
+                )
                 assertTrue(
-                    plan.identical
+                    plan.identicalFilePairs
+                        .map { it.source.path.subPath }
+                        .sorted()
                         .isEmpty(),
                 )
-                assertEquals(listOf("delete.txt"), plan.deleted)
+                assertEquals(
+                    listOf("delete.txt"),
+                    plan.deletedFiles
+                        .map { it.path.subPath }
+                        .sorted(),
+                )
                 assertTrue(
                     StorageSyncer()
                         .compareFiles(
@@ -153,7 +165,7 @@ class StorageSyncerTest {
                             storage,
                             rules,
                             SyncContext(isForced = true),
-                        ).identical
+                        ).identicalFilePairs
                         .isEmpty(),
                 )
             } finally {
@@ -325,7 +337,12 @@ class StorageSyncerTest {
                             ),
                         ),
                     )
-                assertEquals(listOf("file"), plan.identical)
+                assertEquals(
+                    listOf("file"),
+                    plan.identicalFilePairs
+                        .map { it.source.path.subPath }
+                        .sorted(),
+                )
             } finally {
                 dir.deleteRecursively()
             }
@@ -356,11 +373,12 @@ class StorageSyncerTest {
         }
 
     @Test
-    fun modifiedContentInvalidatesPreview() =
+    fun synchronizationComparesCurrentContentsIndependently() =
         runBlocking<Unit> {
             val dir = root()
             try {
-                File(dir, "file").writeText("old")
+                val file = File(dir, "file")
+                file.writeText("old")
                 val storage = FileSyncStorage(dir)
                 val sources =
                     listOf(
@@ -370,17 +388,14 @@ class StorageSyncerTest {
                             SyncFileChecksum("md5", "202cb962ac59075b964b07152d234b70"),
                         ),
                     )
-                val preview = StorageSyncer().compareFiles(sources, storage, full)
-                File(dir, "file").writeText("new")
-                assertFailsWith<IllegalArgumentException> {
-                    StorageSyncer().compareAndSyncFiles(
-                        sources,
-                        storage,
-                        full,
-                        expectedPlan = preview,
-                    )
-                }
-                assertEquals("new", File(dir, "file").readText())
+                val syncer = StorageSyncer()
+                syncer.compareFiles(sources, storage, full)
+                file.writeText("changed")
+
+                val result = syncer.compareAndSyncFiles(sources, storage, full)
+
+                assertEquals(listOf("file"), result.applied)
+                assertEquals("123", file.readText())
             } finally {
                 dir.deleteRecursively()
             }

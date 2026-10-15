@@ -9,7 +9,3 @@ class SyncFailure(
 class IntegrityException(
     path: String,
 ) : Exception("Content verification failed: $path")
-
-class ChangedFileException(
-    path: String,
-) : Exception("File changed during synchronization: $path")

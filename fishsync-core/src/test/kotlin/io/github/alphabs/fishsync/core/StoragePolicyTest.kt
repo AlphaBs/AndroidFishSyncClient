@@ -14,7 +14,7 @@ import kotlin.test.*
 
 class StoragePolicyTest {
     @Test
-    fun excludedAndSizeOnlyFilesAreNeverOpenedForFingerprint() =
+    fun excludedAndSizeOnlyFilesAreNotOpenedForComparison() =
         runBlocking<Unit> {
             val storage =
                 object : ReadableSyncStorage {
@@ -44,12 +44,28 @@ class StoragePolicyTest {
                     ),
                 )
             val plan = StorageSyncer().compareFiles(sources, storage, rules)
-            assertEquals(listOf("size-only"), plan.identical)
-            assertFalse(plan.hasChanges)
+            assertEquals(
+                listOf("size-only"),
+                plan.identicalFilePairs
+                    .map { it.source.path.subPath }
+                    .sorted(),
+            )
+            assertTrue(
+                plan.addedFiles
+                    .isEmpty(),
+            )
+            assertTrue(
+                plan.updatedFilePairs
+                    .isEmpty(),
+            )
+            assertTrue(
+                plan.deletedFiles
+                    .isEmpty(),
+            )
         }
 
     @Test
-    fun caseInsensitiveUpdatesProtectPreviewAndKeepTargetSpelling() =
+    fun caseInsensitiveUpdatesKeepTargetSpelling() =
         runBlocking<Unit> {
             val directory =
                 Files
@@ -77,16 +93,6 @@ class StoragePolicyTest {
                         ),
                     )
                 val syncer = StorageSyncer()
-                val preview = syncer.compareFiles(listOf(source), storage, rules)
-                target.writeText("changed")
-                assertFailsWith<IllegalArgumentException> {
-                    syncer.compareAndSyncFiles(
-                        listOf(source),
-                        storage,
-                        rules,
-                        expectedPlan = preview,
-                    )
-                }
                 syncer.compareAndSyncFiles(listOf(source), storage, rules)
                 assertEquals("123", target.readText())
                 assertEquals(
@@ -128,16 +134,25 @@ class StoragePolicyTest {
                 val storage = FileSyncStorage(directory)
                 val syncer = StorageSyncer()
                 val plan = syncer.compareFiles(listOf(source), storage, rules)
-                assertEquals(listOf("I.txt"), plan.updated)
+                assertEquals(
+                    listOf("I.txt"),
+                    plan.updatedFilePairs
+                        .map { it.source.path.subPath }
+                        .sorted(),
+                )
                 assertTrue(
-                    plan.added
+                    plan.addedFiles
+                        .map { it.path.subPath }
+                        .sorted()
                         .isEmpty(),
                 )
                 assertTrue(
-                    plan.deleted
+                    plan.deletedFiles
+                        .map { it.path.subPath }
+                        .sorted()
                         .isEmpty(),
                 )
-                syncer.compareAndSyncFiles(listOf(source), storage, rules, expectedPlan = plan)
+                syncer.compareAndSyncFiles(listOf(source), storage, rules)
                 assertEquals("123", target.readText())
                 assertEquals(
                     listOf("ı.txt"),

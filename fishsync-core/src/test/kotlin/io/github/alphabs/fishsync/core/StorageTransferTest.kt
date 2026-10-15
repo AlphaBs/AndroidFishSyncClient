@@ -56,7 +56,6 @@ class StorageTransferTest {
                         override suspend fun sync(
                             pair: SyncFilePair,
                             storage: WritableSyncStorage,
-                            expectedTargetChecksum: String?,
                             onProgress: (SyncProgress) -> Unit,
                             onApplied: (Long) -> Unit,
                         ) {
@@ -64,7 +63,6 @@ class StorageTransferTest {
                             delegate.sync(
                                 pair,
                                 storage,
-                                expectedTargetChecksum,
                                 onProgress,
                                 onApplied,
                             )
