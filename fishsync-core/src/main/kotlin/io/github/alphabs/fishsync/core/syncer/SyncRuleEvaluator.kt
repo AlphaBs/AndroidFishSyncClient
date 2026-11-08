@@ -14,6 +14,8 @@ internal class SyncRuleEvaluator(
     init {
         val rules = requireNotNull(options.rules) { "Rules must be specified" }
         require(rules.isNotEmpty()) { "Rules must not be empty" }
+        val patternCaseInsensitive =
+            options.rulePatternCaseInsensitive ?: pathOptions.caseInsensitive
         compiled =
             rules.map { rule ->
                 require(
@@ -25,7 +27,7 @@ internal class SyncRuleEvaluator(
                             rule.pattern,
                             pathOptions,
                         ).replace(pathOptions.pathSeparator, '/')
-                rule to GlobPattern(pattern, pathOptions.caseInsensitive)
+                rule to GlobPattern(pattern, patternCaseInsensitive)
             }
     }
 

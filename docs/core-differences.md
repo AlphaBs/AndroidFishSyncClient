@@ -2,7 +2,7 @@
 
 ## 비교 범위
 
-- 갱신일: 2026-10-15.
+- 갱신일: 2026-11-09.
 - 원본: AlphaBs/FishSyncClient의 `src`, 커밋 `f7dad08cf62ca23c1feec44bafe576c4da1b2bce`.
 - Kotlin: 현재 `fishsync-core/src/main/kotlin` 구현. `storage` 어댑터를 포함한다.
 - 서버 클라이언트, Android 어댑터와 샘플 UI는 비교 범위에서 제외한다.
@@ -33,6 +33,10 @@
 Kotlin은 내부 [GlobPattern](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/internals/GlobPattern.kt)을 사용한다. `*`·`?`는 경로 요소 안에서, 독립된 `**`는 디렉터리 0개 이상과 일치한다. `[a-z]`·중괄호는 일반 문자로 처리한다. DotNet.Glob의 전체 문법과 특이 동작은 지원하지 않는다. 재귀·백트래킹과 외부 matcher 의존성은 없다.
 
 경로 대소문자 비교에는 Kotlin 표준 String.CASE_INSENSITIVE_ORDER와 ignoreCase를 사용한다. .NET OrdinalIgnoreCase와 Unicode 판정이 다를 수 있다. 예를 들어 Kotlin은 `I`/`ı`, `İ`/`i`도 대소문자를 무시하면 같은 이름으로 취급한다.
+
+`SyncerOptions.rulePatternCaseInsensitive`는 규칙 glob의 대소문자 비교만 따로 설정한다. 기본값 `null`은 `PathOptions.caseInsensitive`를 따라 기존 동작을 유지한다. `true` 또는 `false`를 지정해도 원격·로컬 파일 경로의 동일성, 파일 쌍 생성, 대상 파일 이름 보존에는 영향을 주지 않는다. 예를 들어 경로 동일성은 대소문자를 무시하면서 `FILES/**` 규칙은 `files/example.txt`와 일치하지 않게 할 수 있다. 규칙 선택 뒤의 설치·갱신·삭제 후보 정책은 그대로다.
+
+이 옵션은 Kotlin API의 확장이며 서비스별 정책은 호출자가 선택한다. 생성자 옵션이 추가된 `SyncerOptions`를 사용하는 기존 바이너리는 새 라이브러리와 함께 재컴파일한다. `RulePatternCasePolicyTest`는 기본값 상속·양방향 override와 실제 파일 동기화에서 경로 연결·삭제 후보가 분리되는지 검증한다.
 
 버전 문자열 trim에는 [DotNetWhitespace](../fishsync-core/src/main/kotlin/io/github/alphabs/fishsync/core/internals/DotNetWhitespace.kt)를 사용해 원본의 공백 집합을 유지한다.
 
